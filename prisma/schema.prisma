@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String            @id @default(uuid())
+  email     String            @unique
+  password  String
+  name      String?
+  clan      String            @default("VoThuong") // DiemHoa | ThuyNguyet | PhongKiem | ThoKim | VoThuong
+  erc       Int               @default(0)          // Chỉ số ERC: từ -100 đến 100
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  readings  Reading[]
+  ercLogs   ERCLog[]
+  memories  UnlockedMemory[]
+}
+
+model Reading {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   String
+  cards      String[] // Danh sách các lá bài (ví dụ: ["The Fool", "The Magician"])
+  response   String   // Đoạn thoại phản hồi từ Vọng
+  ercChange  Int      // Mức độ thay đổi ERC trong lượt bói này
+  createdAt  DateTime @default(now())
+}
+
+model ERCLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  changeValue Int
+  reason      String
+  createdAt   DateTime @default(now())
+}
+
+model UnlockedMemory {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memoryIndex Int      // Index từ 1 -> 7 đại diện cho 7 mảnh hồi ức của Vọng
+  unlockedAt  DateTime @default(now())
+
+  @@unique([userId, memoryIndex])
+}

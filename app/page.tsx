@@ -623,11 +623,22 @@ export default function HomePage() {
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
     const hasSeen = localStorage.getItem("hasSeenTutorial");
     if (!hasSeen) {
       setShowWelcomePopup(true);
+    }
+
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      const loadVoices = () => {
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+          setVoices(window.speechSynthesis.getVoices());
+        }
+      };
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
     }
   }, []);
 
@@ -647,9 +658,12 @@ export default function HomePage() {
       utterance.rate = 0.85; // Slow, mystical voice
       utterance.pitch = 0.85; // Lower pitch
       
-      const voices = window.speechSynthesis.getVoices();
-      const viVoice = voices.find(v => v.lang.includes("vi"));
-      if (viVoice) utterance.voice = viVoice;
+      const currentVoices = window.speechSynthesis.getVoices();
+      const viVoice = currentVoices.find(v => v.lang.toLowerCase().includes("vi")) || 
+                      voices.find(v => v.lang.toLowerCase().includes("vi"));
+      if (viVoice) {
+        utterance.voice = viVoice;
+      }
 
       utterance.onend = () => {
         playNextSentence(idx + 1);

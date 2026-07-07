@@ -69,7 +69,8 @@ export default function NghiThucDotLaPage() {
     }
   }, [holding]);
 
-  const startHolding = () => {
+  const startHolding = (e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) e.preventDefault();
     if (isBurned || loading) return;
     setHolding(true);
     setError("");
@@ -262,7 +263,7 @@ export default function NghiThucDotLaPage() {
               <button
                 onMouseDown={startHolding}
                 onTouchStart={startHolding}
-                className={`w-36 h-36 rounded-full flex flex-col items-center justify-center border transition-all duration-300 ${
+                className={`w-36 h-36 rounded-full flex flex-col items-center justify-center border transition-all duration-300 select-none ${
                   holding
                     ? "scale-95 border-amber-400/50 bg-amber-400/10 shadow-[0_0_30px_rgba(212,168,67,0.3)]"
                     : "border-white/10 bg-white/2 hover:border-white/20"

@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Cõi Vô Thường',
   webDir: 'out',
   server: {
-    // Thay đổi URL này thành địa chỉ website online thực tế của bạn sau khi deploy (ví dụ: https://appxemboi.com)
-    url: 'http://192.168.1.2:3000', 
+    // Sẽ kết nối trực tiếp đến IP máy tính của bạn khi chạy thử nghiệm
+    url: 'http://192.168.1.33:3000', 
     cleartext: true
   }
 };

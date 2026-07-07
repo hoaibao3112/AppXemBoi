@@ -74,8 +74,12 @@ export default function NghiThucDotLaPage() {
     }
 
     // Vibrate to indicate start (Haptic feedback)
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(100);
+    try {
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(100);
+      }
+    } catch (e) {
+      console.warn("Vibration not supported:", e);
     }
 
     const startTime = Date.now();
@@ -85,11 +89,13 @@ export default function NghiThucDotLaPage() {
       setProgress(currentProgress);
 
       // Heartbeat vibration during charge
-      if (Math.floor(elapsed / 300) % 2 === 0) {
-        if (typeof navigator !== "undefined" && navigator.vibrate) {
-          navigator.vibrate(20);
+      try {
+        if (Math.floor(elapsed / 300) % 2 === 0) {
+          if (typeof navigator !== "undefined" && navigator.vibrate) {
+            navigator.vibrate(20);
+          }
         }
-      }
+      } catch (e) {}
 
       if (elapsed >= 3000) {
         if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
@@ -121,9 +127,11 @@ export default function NghiThucDotLaPage() {
     stopFireCrackling();
 
     // Final ignition vibration
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate([300, 100, 300]);
-    }
+    try {
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate([300, 100, 300]);
+      }
+    } catch (e) {}
 
     try {
       const token = localStorage.getItem("token");

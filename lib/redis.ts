@@ -23,3 +23,14 @@ export const cache = {
     await redis.del(key);
   },
 };
+
+export async function isRateLimited(userId: string, action: string, limitSeconds = 5): Promise<boolean> {
+  try {
+    const key = `rate_limit:${action}:${userId}`;
+    const result = await redis.set(key, '1', 'EX', limitSeconds, 'NX');
+    return result !== 'OK';
+  } catch (error) {
+    console.error('Rate limiter Redis error:', error);
+    return false; // Fail open
+  }
+}

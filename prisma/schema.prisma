@@ -20,6 +20,7 @@ model User {
   readings  Reading[]
   ercLogs   ERCLog[]
   memories  UnlockedMemory[]
+  whispers  Whisper[]
 }
 
 model Reading {
@@ -31,6 +32,8 @@ model Reading {
   response   String   // Đoạn thoại phản hồi từ Vọng
   ercChange  Int      // Mức độ thay đổi ERC trong lượt bói này
   createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model ERCLog {
@@ -40,6 +43,8 @@ model ERCLog {
   changeValue Int
   reason      String
   createdAt   DateTime @default(now())
+
+  @@index([userId])
 }
 
 model UnlockedMemory {
@@ -50,4 +55,15 @@ model UnlockedMemory {
   unlockedAt  DateTime @default(now())
 
   @@unique([userId, memoryIndex])
+}
+
+model Whisper {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  clan      String   // DiemHoa | ThuyNguyet | PhongKiem | ThoKim | VoThuong
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

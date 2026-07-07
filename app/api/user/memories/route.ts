@@ -10,6 +10,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized. User context missing.' }, { status: 401 });
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { erc: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+    }
+
     const dbMemories = await prisma.unlockedMemory.findMany({
       where: { userId },
       orderBy: { memoryIndex: 'asc' },
@@ -17,10 +26,20 @@ export async function GET(req: NextRequest) {
 
     const unlocked = dbMemories.map((dbMem) => {
       const staticMem = VONG_MEMORIES.find((m) => m.index === dbMem.memoryIndex);
+      let dialogue = 'Chưa thể chạm tới mảnh ký ức này.';
+      if (staticMem) {
+        if (user.erc >= 30) {
+          dialogue = staticMem.dialogueWarm;
+        } else if (user.erc <= -30) {
+          dialogue = staticMem.dialogueCold;
+        } else {
+          dialogue = staticMem.dialogueDefault;
+        }
+      }
       return {
         index: dbMem.memoryIndex,
         title: staticMem ? staticMem.title : 'Ký ức ẩn giấu',
-        dialogue: staticMem ? staticMem.dialogue : 'Chưa thể chạm tới mảnh ký ức này.',
+        dialogue,
         unlockedAt: dbMem.unlockedAt.toISOString(),
       };
     });

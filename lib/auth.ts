@@ -1,7 +1,10 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { NextRequest } from 'next/server';
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-mystic-secret-key-321');
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is missing');
+}
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function signToken(payload: { id: string; email: string }) {
   return new SignJWT(payload)
@@ -9,25 +12,6 @@ export async function signToken(payload: { id: string; email: string }) {
     .setIssuedAt()
     .setExpirationTime('7d')
     .sign(secret);
-}
-
-export async function verifyAuth(req: NextRequest) {
-  try {
-    // Check authorization header first
-    let token = req.headers.get('authorization')?.replace('Bearer ', '');
-    
-    // Fallback: check custom x-user-id header injected by middleware
-    const xUserId = req.headers.get('x-user-id');
-    if (!token && xUserId) {
-      return { id: xUserId, email: '' }; // Partial user context
-    }
-
-    if (!token) return null;
-    const { payload } = await jwtVerify(token, secret);
-    return payload as { id: string; email: string };
-  } catch {
-    return null;
-  }
 }
 
 /**

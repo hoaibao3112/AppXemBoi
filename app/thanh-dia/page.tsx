@@ -3,6 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  playCardFlip,
+  startFireCrackling,
+  stopFireCrackling,
+  startAmbientPad,
+  stopAmbientPad
+} from "@/lib/audio";
 
 interface DrawnCard {
   id: string;
@@ -23,6 +30,25 @@ export default function NghiThucDotLaPage() {
   const [whisper, setWhisper] = useState("");
   const [error, setError] = useState("");
   
+  const [ambientOn, setAmbientOn] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      stopAmbientPad();
+      stopFireCrackling();
+    };
+  }, []);
+
+  const toggleAmbient = () => {
+    if (ambientOn) {
+      stopAmbientPad();
+      setAmbientOn(false);
+    } else {
+      startAmbientPad();
+      setAmbientOn(true);
+    }
+  };
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -31,6 +57,9 @@ export default function NghiThucDotLaPage() {
     setHolding(true);
     setError("");
     setProgress(0);
+
+    // Play ASMR Fire crackling sound
+    startFireCrackling();
 
     // Vibrate to indicate start (Haptic feedback)
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -60,6 +89,7 @@ export default function NghiThucDotLaPage() {
 
   const stopHolding = () => {
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    stopFireCrackling();
     if (!isBurned) {
       setHolding(false);
       setProgress(0);
@@ -70,6 +100,7 @@ export default function NghiThucDotLaPage() {
     setHolding(false);
     setLoading(true);
     setIsBurned(true);
+    stopFireCrackling();
 
     // Final ignition vibration
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -92,6 +123,8 @@ export default function NghiThucDotLaPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Nghi thức thất bại. Lực lượng cõi sương chưa chấp thuận.");
 
+      // Play flip sound
+      playCardFlip();
       setRevealedCard(data.card);
       setWhisper(data.whisper);
     } catch (err: any) {
@@ -103,6 +136,7 @@ export default function NghiThucDotLaPage() {
   };
 
   const handleReset = () => {
+    stopFireCrackling();
     setIsBurned(false);
     setRevealedCard(null);
     setWhisper("");
@@ -144,7 +178,17 @@ export default function NghiThucDotLaPage() {
           <span className="font-display text-xs text-white/60 tracking-widest uppercase">
             NGHI THỨC ĐỐT LÁ
           </span>
-          <div className="w-9" />
+          <button
+            onClick={toggleAmbient}
+            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all text-xs ${
+              ambientOn
+                ? "border-purple-400/40 text-purple-400 bg-purple-500/10 shadow-[0_0_10px_rgba(139,92,246,0.3)] animate-pulse"
+                : "border-white/10 text-white/40 hover:text-white/70"
+            }`}
+            title={ambientOn ? "Tắt nhạc sương" : "Bật nhạc sương"}
+          >
+            🎵
+          </button>
         </header>
 
         {/* ── Step 1: Holding Interaction ─────────────────── */}
@@ -251,36 +295,38 @@ export default function NghiThucDotLaPage() {
             <div
               className="w-[150px] h-[230px] rounded-xl flex flex-col justify-between p-3.5 border relative overflow-hidden"
               style={{
-                background: "linear-gradient(160deg, #0f0b1e 0%, #1e1245 60%, #08061a 100%)",
                 borderColor: `${getClanColor(revealedCard.clan)}40`,
                 boxShadow: `0 0 35px ${getClanColor(revealedCard.clan)}30`,
               }}
             >
-              <span
-                className="font-display text-[7px] tracking-widest uppercase self-start"
-                style={{ color: getClanColor(revealedCard.clan) }}
-              >
-                {revealedCard.clan === "VoThuong" ? "Major Arcana" : "Minor Arcana"}
-              </span>
+              {/* Real Card Illustration Image */}
+              <img
+                src={`/cards/${revealedCard.clan}.png`}
+                alt={revealedCard.name}
+                className="absolute inset-0 w-full h-full object-cover filter brightness-[0.75] contrast-[1.05]"
+              />
 
-              <div className="text-3xl self-center animate-bounce">
-                {revealedCard.clan === "VoThuong" ? "🏛️" : "✨"}
-              </div>
-
-              <div className="flex flex-col items-center gap-1 w-full">
-                <div className="w-full h-px" style={{ background: `${getClanColor(revealedCard.clan)}30` }} />
-                <h3
-                  className="font-display text-[10px] font-semibold tracking-wider mt-1"
-                  style={{ color: `${getClanColor(revealedCard.clan)}ee` }}
+              {/* Overlay content */}
+              <div className="absolute inset-0 flex flex-col justify-between p-3.5 bg-gradient-to-t from-black via-black/10 to-transparent z-10">
+                <span
+                  className="font-display text-[7px] tracking-widest uppercase self-start drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
+                  style={{ color: getClanColor(revealedCard.clan) }}
                 >
-                  {revealedCard.name}
-                </h3>
-                <span className="font-sans text-[6px] text-white/30 italic">
-                  ({revealedCard.englishName})
+                  {revealedCard.clan === "VoThuong" ? "Major Arcana" : "Minor Arcana"}
                 </span>
-              </div>
 
-              <div className="absolute inset-0 shimmer opacity-20 pointer-events-none" />
+                <div className="flex flex-col items-center gap-1 w-full mt-auto">
+                  <div className="w-full h-px" style={{ background: `${getClanColor(revealedCard.clan)}40` }} />
+                  <h3
+                    className="font-display text-[10px] font-semibold tracking-wider mt-1 text-white drop-shadow-[0_1px_2.5px_rgba(0,0,0,0.95)]"
+                  >
+                    {revealedCard.name}
+                  </h3>
+                  <span className="font-sans text-[6px] text-white/40 italic drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
+                    ({revealedCard.englishName})
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Whisper Dialogue */}

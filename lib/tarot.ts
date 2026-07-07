@@ -165,3 +165,11 @@ export function drawCards(count: number, options: DrawOptions = {}): DrawnCard[]
 
   return drawn;
 }
+
+export const CLAN_NAMES_VI: Record<string, string> = {
+  DiemHoa: 'Diễm Hoả',
+  ThuyNguyet: 'Thuỷ Nguyệt',
+  PhongKiem: 'Phong Kiếm',
+  ThoKim: 'Thổ Kim',
+  VoThuong: 'Vô Thường'
+};

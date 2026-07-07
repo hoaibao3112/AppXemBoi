@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { handleError } from '@/lib/errors';
 import { z } from 'zod';
+import { FATEFUL_PROMPTS } from '@/lib/narrative';
 
 const choiceSchema = z.object({
   readingId: z.string().uuid(),
   choiceId: z.enum(['A', 'B', 'C']),
+  fatefulIndex: z.number().min(0).max(4).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -42,15 +44,27 @@ export async function POST(req: NextRequest) {
     let ercChange = 0;
     let reply = '';
 
-    if (data.choiceId === 'A') {
-      ercChange = -10;
-      reply = 'Một quyết định dũng cảm. Bước đi trong sương mù luôn đáng sợ, nhưng chỉ cần dám bước bước đầu tiên, sương sẽ tự động rẽ lối. Hãy đi đi, ta luôn đứng đây dõi theo ngươi.';
-    } else if (data.choiceId === 'B') {
-      ercChange = 10;
-      reply = 'Ta không trách ngươi khờ dại. Trái tim con người vốn dĩ không hoạt động bằng lý trí sắc lạnh. Nếu chưa thể buông bỏ, hãy cứ ở lại cho đến khi lòng không còn gì nuối tiếc.';
-    } else { // C
-      ercChange = 0;
-      reply = 'Đứng giữa ngã rẽ luôn là khoảnh khắc đứng tim nhất. Đừng ép mình phải chọn ngay đêm nay. Hãy để câu chuyện này lắng xuống cùng sương đêm, ngày mai câu trả lời sẽ tự hiện rõ.';
+    const isReadingFateful = reading.question.startsWith("[ĐỊNH MỆNH]");
+
+    if (isReadingFateful && typeof data.fatefulIndex === 'number' && data.fatefulIndex >= 0 && data.fatefulIndex < FATEFUL_PROMPTS.length) {
+      const selectedFate = FATEFUL_PROMPTS[data.fatefulIndex];
+      const selectedChoice = selectedFate.choices.find(c => c.id === data.choiceId);
+      if (selectedChoice) {
+        ercChange = selectedChoice.ercChange;
+        reply = selectedChoice.reply;
+      }
+    } else {
+      // Default Non-Fateful choice handling
+      if (data.choiceId === 'A') {
+        ercChange = -10;
+        reply = 'Một quyết định dũng cảm. Bước đi trong sương mù luôn đáng sợ, nhưng chỉ cần dám bước bước đầu tiên, sương sẽ tự động rẽ lối. Hãy đi đi, ta luôn đứng đây dõi theo ngươi.';
+      } else if (data.choiceId === 'B') {
+        ercChange = 10;
+        reply = 'Ta không trách ngươi khờ dại. Trái tim con người vốn dĩ không hoạt động bằng lý trí sắc lạnh. Nếu chưa thể buông bỏ, hãy cứ ở lại cho đến khi lòng không còn gì nuối tiếc.';
+      } else { // C
+        ercChange = 0;
+        reply = 'Đứng giữa ngã rẽ luôn là khoảnh khắc đứng tim nhất. Đừng ép mình phải chọn ngay đêm nay. Hãy để câu chuyện này lắng xuống cùng sương đêm, ngày mai câu trả lời sẽ tự hiện rõ.';
+      }
     }
 
     // Calculate clamped ERC

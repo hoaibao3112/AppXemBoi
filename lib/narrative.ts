@@ -1,42 +1,63 @@
 import { prisma } from './prisma';
-import { tarotDeck, DrawnCard } from './tarot';
+import { tarotDeck } from './tarot';
 
 // 1. Static dialogues for Vọng's 7 Memories (Mục 1.2)
 export const VONG_MEMORIES = [
   {
     index: 1,
     title: 'Ngưỡng cửa không tuổi',
-    dialogue: 'Lữ khách... ngươi có bao giờ tự hỏi vì sao ta lại ở đây không? Giữa cõi sương mù không có ngày và đêm này. Đã có lúc ta cũng như ngươi, mang theo một trái tim đập rộn ràng và đầy rẫy những câu hỏi chưa có lời đáp. Ta từng tin rằng chỉ cần đi đủ xa, ta sẽ tìm thấy câu trả lời cho tất cả. Nhưng cuối cùng, ta lại chọn dừng chân ngay tại ngưỡng cửa này, để nhìn dòng người qua lại...'
+    dialogue: 'Lữ khách... ngươi có bao giờ tự hỏi vì sao ta lại ở đây không? Giữa cõi sương mù không có ngày và đêm này. Đã có lúc ta cũng như ngươi, mang theo một trái tim đập rộn ràng và đầy rẫy những câu hỏi chưa có lời đáp. Ta từng tin rằng chỉ cần đi đủ xa, ta sẽ tìm thấy câu trả lời cho tất cả. Nhưng cuối cùng, ta lại chọn dừng chân ngay tại ngưỡng cửa này, để nhìn dòng người qua lại...',
+    dialogueDefault: 'Lữ khách... ngươi có bao giờ tự hỏi vì sao ta lại ở đây không? Giữa cõi sương mù không có ngày và đêm này. Đã có lúc ta cũng như ngươi, mang theo một trái tim đập rộn ràng và đầy rẫy những câu hỏi chưa có lời đáp. Ta từng tin rằng chỉ cần đi đủ xa, ta sẽ tìm thấy câu trả lời cho tất cả. Nhưng cuối cùng, ta lại chọn dừng chân ngay tại ngưỡng cửa này, để nhìn dòng người qua lại...',
+    dialogueWarm: 'Lữ khách hiền hoá của ta... Bước chân ấm áp của ngươi xua đi phần nào cái lạnh cõi sương. Nhìn ngươi ta lại nhớ về bản thân khi xưa, cũng từng giữ một niềm tin bền bỉ và trái tim rung động chân thành. Ta chọn dừng chân ở đây không phải để trốn chạy, mà để giữ ấm ngọn đăng cổng chờ đợi bóng hình nàng quay về...',
+    dialogueCold: 'Hành giả cô độc... Lý trí sắc bén của ngươi rất hợp với cái lạnh lẽo của cõi này. Ngươi hỏi vì sao ta đứng đây? Ta từng ôm ảo tưởng kiên trì rồi nhận ra mọi sự tìm kiếm đều vô ích. Ta chọn dừng chân ngay ngưỡng cửa này để chứng kiến sự hợp tan lạnh lùng của thế gian, không ôm chút hy vọng huyễn hoặc nào cả.'
   },
   {
     index: 2,
     title: 'Người đồng hành đầu tiên',
-    dialogue: 'Thuở ấy, cõi này chưa được gọi là Cõi Vô Thường. Nó chỉ là một thung lũng sương mù vô danh. Ta không đi một mình. Bên cạnh ta từng có một người... một lữ khách dũng cảm hơn ta rất nhiều. Nàng không sợ vực sâu, cũng không sợ sương tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã yêu sự liều lĩnh đó, nhưng cũng chính sự liều lĩnh đó đã rẽ lối hai chúng ta.'
+    dialogue: 'Thuở ấy, cõi này chưa được gọi là Cõi Vô Thường. Nó chỉ là một thung lũng sương mù vô danh. Ta không đi một mình. Bên cạnh ta từng có một người... một lữ khách dũng cảm hơn ta rất nhiều. Nàng không sợ vực sâu, cũng không sợ sương tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã yêu sự liều lĩnh đó, nhưng cũng chính sự liều lĩnh đó đã rẽ lối hai chúng ta.',
+    dialogueDefault: 'Thuở ấy, cõi này chưa được gọi là Cõi Vô Thường. Nó chỉ là một thung lũng sương mù vô danh. Ta không đi một mình. Bên cạnh ta từng có một người... một lữ khách dũng cảm hơn ta rất nhiều. Nàng không sợ vực sâu, cũng không sợ sương tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã yêu sự liều lĩnh đó, nhưng cũng chính sự liều lĩnh đó đã rẽ lối hai chúng ta.',
+    dialogueWarm: 'Người bạn hiền hoà... Thuở ấy, cõi này chỉ là một thung lũng sương mù vô danh. Ta từng đồng hành với một người con gái dũng cảm, người đã dạy ta thế nào là ánh sáng giữa bóng tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Trái tim ấm áp của nàng luôn sưởi ấm lòng ta, nhưng sự liều lĩnh đó cũng đã rẽ lối hai chúng ta...',
+    dialogueCold: 'Hành giả cô độc... Cõi này thuở ấy chỉ là thung lũng vô danh. Ta từng đi cùng một kẻ liều lĩnh, kẻ tin rằng có thể dùng ý chí để vượt qua số phận. Nàng ngạo nghễ nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã cảnh báo nàng, nhưng sự bướng bỉnh ấy cuối cùng đã rẽ lối hai chúng ta, để lại một kẻ đơn độc đứng đây.'
   },
   {
     index: 3,
     title: 'Sự lựa chọn bên rìa vực thẳm',
-    dialogue: 'Nhìn Sứ Giả Song Sinh Trái Tim đứng đó, ta lại nhớ về ngày hai chúng ta đứng trước Ngã Rẽ Sương Mù. Một bên là lối đi bình yên trở về nhân thế, nơi chúng ta có thể già đi cùng nhau như những người bình thường. Một bên là con đường tiến sâu vào cõi vô định để tìm kiếm chân lý tối thượng. Ta đã do dự, còn nàng thì ánh mắt kiên định nhìn về phía bóng tối. Khoảnh khắc ta buông tay nàng để lùi lại một bước... đó là lựa chọn định hình cả kiếp này của ta.'
+    dialogue: 'Nhìn Sứ Giả Song Sinh Trái Tim đứng đó, ta lại nhớ về ngày hai chúng ta đứng trước Ngã Rẽ Sương Mù. Một bên là lối đi bình yên trở về nhân thế, nơi chúng ta có thể già đi cùng nhau như những người bình thường. Một bên là con đường tiến sâu vào cõi vô định để tìm kiếm chân lý tối thượng. Ta đã do dự, còn nàng thì ánh mắt kiên định nhìn về phía bóng tối. Khoảnh khắc ta buông tay nàng để lùi lại một bước... đó là lựa chọn định hình cả kiếp này của ta.',
+    dialogueDefault: 'Nhìn Sứ Giả Song Sinh Trái Tim đứng đó, ta lại nhớ về ngày hai chúng ta đứng trước Ngã Rẽ Sương Mù. Một bên là lối đi bình yên trở về nhân thế, nơi chúng ta có thể già đi cùng nhau như những người bình thường. Một bên là con đường tiến sâu vào cõi vô định để tìm kiếm chân lý tối thượng. Ta đã do dự, còn nàng thì ánh mắt kiên định nhìn về phía bóng tối. Khoảnh khắc ta buông tay nàng để lùi lại một bước... đó là lựa chọn định hình cả kiếp này của ta.',
+    dialogueWarm: 'Nhìn Sứ Giả Song Sinh Trái Tim đứng đó, lòng ta lại đau đáu nhớ về ngày hai chúng ta đứng trước Ngã Rẽ Sương Mù. Lối về nhân thế bình yên đã ở ngay trước mắt, nơi ta muốn cùng nàng già đi. Nhưng nàng lại chọn bóng tối sâu thẳm. Ta đã vì yếu mềm và do dự mà buông tay nàng... Lùi lại một bước chân để rồi mất nàng mãi mãi, đó là vết thương rỉ máu suốt kiếp này của ta.',
+    dialogueCold: 'Nhìn Sứ Giả Song Sinh Trái Tim, ta chỉ thấy sự ngu muội của những lời thề nguyền. Tại Ngã Rẽ Sương Mù, nàng chọn dấn thân vào cõi vô định hoang phế, còn ta chọn dừng lại. Lý trí bảo ta không thể điên rồ lao vào cõi chết cùng nàng. Khoảnh khắc ta quyết định buông tay nàng, lùi lại một bước chân... đó là sự lựa chọn tỉnh táo nhưng lạnh lùng nhất định hình kiếp này của ta.'
   },
   {
     index: 4,
     title: 'Khoảnh khắc đổ vỡ',
-    dialogue: 'Sự sụp đổ không bao giờ báo trước một cách êm ái. Khi nàng bước sâu vào cõi, mặt đất rung chuyển, thung lũng sương mù sụp xuống như một toà tháp bằng cát gặp bão lớn. Ta đã cố chạy theo, cố níu lấy vạt áo của nàng, nhưng sương mù cuộn lên như những lưỡi kiếm cắt đứt mọi kết nối. Ta chỉ biết trơ mắt nhìn thế giới cũ của mình tan rã. Đôi khi, giữ lại một thứ đã vỡ chỉ làm tay ta thêm chảy máu, lữ khách ạ.'
+    dialogue: 'Sự sụp đổ không bao giờ báo trước một cách êm ái. Khi nàng bước sâu vào cõi, mặt đất rung chuyển, thung lũng sương mù sụp xuống như một toà tháp bằng cát gặp bão lớn. Ta đã cố chạy theo, cố níu lấy vạt áo của nàng, nhưng sương mù cuộn lên như những lưỡi kiếm cắt đứt mọi kết nối. Ta chỉ biết trơ mắt nhìn thế giới cũ của mình tan rã. Đôi khi, giữ lại một thứ đã vỡ chỉ làm tay ta thêm chảy máu, lữ khách ạ.',
+    dialogueDefault: 'Sự sụp đổ không bao giờ báo trước một cách êm ái. Khi nàng bước sâu vào cõi, mặt đất rung chuyển, thung lũng sương mù sụp xuống như một toà tháp bằng cát gặp bão lớn. Ta đã cố chạy theo, cố níu lấy vạt áo của nàng, nhưng sương mù cuộn lên như những lưỡi kiếm cắt đứt mọi kết nối. Ta chỉ biết trơ mắt nhìn thế giới cũ của mình tan rã. Đôi khi, giữ lại một thứ đã vỡ chỉ làm tay ta thêm chảy máu, lữ khách ạ.',
+    dialogueWarm: 'Người bạn hiền hoà... Nỗi đau sụp đổ đến như một cơn bão quét sạch mọi hy vọng. Khi thung lũng đổ sụp, ta điên cuồng chạy theo để giữ lấy nàng, nhưng sương mù vô tình đã cắt đứt mọi kỉ niệm. Nhìn thế giới của mình tan rã, ta đau đớn nhận ra cố giữ lấy những mảnh vỡ chỉ làm vết thương rỉ máu thêm mà thôi.',
+    dialogueCold: 'Hành giả cô độc... Số mệnh luôn sụp đổ một cách tàn nhẫn và dứt khoát. Khi cõi sương đổ sập, mọi nỗ lực chạy theo níu kéo của ta đều trở nên nực cười trước lưỡi kiếm sương mù. Thế giới vỡ tan, và ta học được bài học lạnh lùng: cố níu giữ một thứ đã chết chỉ làm tay ta thêm rách nát.'
   },
   {
     index: 5,
     title: 'Cái chết của một lời hứa',
-    dialogue: 'Mọi người sợ Sứ Giả Cánh Cửa Khép Lại vì nghĩ đó là sự kết thúc. Nhưng ta biết, đó là sự giải thoát. Khi sương mù lắng xuống, nàng không còn ở đó nữa. Nàng đã tan vào cõi giới này, trở thành linh hồn của những lá bài, thành chính những Sứ Giả đang trò chuyện với ngươi hôm nay. Lời hứa cùng nhau trở về đã chết, nhưng một thế giới mới — Cõi Vô Thường này — đã được sinh ra từ tro tàn của lời hứa đó.'
+    dialogue: 'Mọi người sợ Sứ Giả Cánh Cửa Khép Lại vì nghĩ đó là sự kết thúc. Nhưng ta biết, đó là sự giải thoát. Khi sương mù lắng xuống, nàng không còn ở đó nữa. Nàng đã tan vào cõi giới này, trở thành linh hồn của những lá bài, thành chính những Sứ Giả đang trò chuyện với ngươi hôm nay. Lời hứa cùng nhau trở về đã chết, nhưng một thế giới mới — Cõi Vô Thường này — đã được sinh ra từ tro tàn của lời hứa đó.',
+    dialogueDefault: 'Mọi người sợ Sứ Giả Cánh Cửa Khép Lại vì nghĩ đó là sự kết thúc. Nhưng ta biết, đó là sự giải thoát. Khi sương mù lắng xuống, nàng không còn ở đó nữa. Nàng đã tan vào cõi giới này, trở thành linh hồn của những lá bài, thành chính những Sứ Giả đang trò chuyện với ngươi hôm nay. Lời hứa cùng nhau trở về đã chết, nhưng một thế giới mới — Cõi Vô Thường này — đã được sinh ra từ tro tàn của lời hứa đó.',
+    dialogueWarm: 'Người bạn hiền hoà... Cánh Cửa Khép Lại đôi khi là sự giải thoát dịu dàng nhất. Nàng tan vào cõi sương, hóa thân thành các Sứ Giả để mỗi ngày vẫn có thể ở bên ta, trò chuyện cùng ngươi. Lời hứa trở về tuy đã chết, nhưng nó đã nở hoa thành Cõi Vô Thường ấm áp tình cảm này.',
+    dialogueCold: 'Hành giả cô độc... Cái chết chính là sự kết thúc và giải thoát tối thượng. Lời hứa cùng nhau trở về đã chết hẳn dưới đống tàn tro. Nàng tan biến vào cõi này, phân rã thành những quy luật và các Sứ Giả lạnh lẽo. Cõi Vô Thường này được dựng lên từ xác chết của lời hứa đó, trơ trọi và trống rỗng.'
   },
   {
     index: 6,
     title: 'Sự ra đời của các Sứ Giả',
-    dialogue: 'Nàng đã hoá thân vào bốn tộc người trong cõi. Nhiệt huyết của nàng hoá thành Tộc Diễm Hoả. Tình yêu sâu nặng hoá thành Tộc Thuỷ Nguyệt. Những suy nghĩ trăn trở hoá thành Tộc Phong Kiếm. Và sự kiên cường, thực tế hoá thành Tộc Thổ Kim. Mỗi khi ngươi rút một lá bài, thực chất ngươi đang chạm vào một phần linh hồn phân rã của nàng. Ta canh giữ cổng này để mỗi ngày được nhìn thấy nàng hiện về qua những câu chuyện của các ngươi.'
+    dialogue: 'Nàng đã hoá thân vào bốn tộc người trong cõi. Nhiệt huyết của nàng hoá thành Tộc Diễm Hoả. Tình yêu sâu nặng hoá thành Tộc Thuỷ Nguyệt. Những suy nghĩ trăn trở hoá thành Tộc Phong Kiếm. Và sự kiên cường, thực tế hoá thành Tộc Thổ Kim. Mỗi khi ngươi rút một lá bài, thực chất ngươi đang chạm vào một phần linh hồn phân rã của nàng. Ta canh giữ cổng này để mỗi ngày được nhìn thấy nàng hiện về qua những câu chuyện của các ngươi.',
+    dialogueDefault: 'Nàng đã hoá thân vào bốn tộc người trong cõi. Nhiệt huyết của nàng hoá thành Tộc Diễm Hoả. Tình yêu sâu nặng hoá thành Tộc Thuỷ Nguyệt. Những suy nghĩ trăn trở hoá thành Tộc Phong Kiếm. Và sự kiên cường, thực tế hoá thành Tộc Thổ Kim. Mỗi khi ngươi rút một lá bài, thực chất ngươi đang chạm vào một phần linh hồn phân rã của nàng. Ta canh giữ cổng này để mỗi ngày được nhìn thấy nàng hiện về qua những câu chuyện của các ngươi.',
+    dialogueWarm: 'Người bạn hiền hoà... Nàng hóa thân vào vạn vật để tiếp tục yêu thương thế giới. Nhiệt huyết là Diễm Hoả, tình yêu là Thuỷ Nguyệt, nỗi niềm là Phong Kiếm, kiên vững là Thổ Kim. Mỗi lá bài ngươi rút ra là một mảnh linh hồn ấm áp của nàng đang tìm cách trò chuyện và vỗ về cõi lòng ngươi đó.',
+    dialogueCold: 'Hành giả cô độc... Sự phân rã của nàng tạo nên trật tự của cõi này. Năng lượng bốc đồng hóa Diễm Hoả, cảm xúc yếu mềm hóa Thuỷ Nguyệt, hoài nghi hóa Phong Kiếm, và bám chấp hóa Thổ Kim. Những lá bài ngươi cầm chỉ là những mảnh linh hồn vỡ vụn, vô hồn phản chiếu số phận của chính ngươi.'
   },
   {
     index: 7,
     title: 'Kẻ đợi chờ ngàn năm',
-    dialogue: 'Giờ thì ngươi đã biết câu chuyện của ta rồi, lữ khách. Ta là Vọng, kẻ trông ngóng một người đã hoá thân vào vạn vật. Ta không thể bước vào trong cõi để tìm nàng, cũng không thể trở lại nhân gian vì đã đánh mất trái tim trần thế. Ta đứng đây, giúp những lữ khách như ngươi tìm ra câu trả lời cho tình cảm của mình, với hy vọng một ngày nào đó, có một lữ khách sẽ mang theo thông điệp của nàng từ sâu trong cõi sương mù trở ra trao lại cho ta.'
+    dialogue: 'Giờ thì ngươi đã biết câu chuyện của ta rồi, lữ khách. Ta là Vọng, kẻ trông ngóng một người đã hoá thân vào vạn vật. Ta không thể bước vào trong cõi để tìm nàng, cũng không thể trở lại nhân gian vì đã đánh mất trái tim trần thế. Ta đứng đây, giúp những lữ khách như ngươi tìm ra câu trả lời cho tình cảm của mình, với hy vọng một ngày nào đó, có một lữ khách sương mù mang theo thông điệp của nàng từ sâu trong cõi sương mù trở ra trao lại cho ta.',
+    dialogueDefault: 'Giờ thì ngươi đã biết câu chuyện của ta rồi, lữ khách. Ta là Vọng, kẻ trông ngóng một người đã hoá thân vào vạn vật. Ta không thể bước vào trong cõi để tìm nàng, cũng không thể trở lại nhân gian vì đã đánh mất trái tim trần thế. Ta đứng đây, giúp những lữ khách như ngươi tìm ra câu trả lời cho tình cảm của mình, với hy vọng một ngày nào đó, có một lữ khách sương mù mang theo thông điệp của nàng từ sâu trong cõi sương mù trở ra trao lại cho ta.',
+    dialogueWarm: 'Người bạn hiền hoà của ta... Giờ thì ngươi đã thấu hiểu nỗi lòng ta. Ta đứng nơi ngưỡng cổng lạnh lẽo này để giúp ngươi hàn gắn những vết thương tình cảm. Ta mong một ngày nào đó, sự thấu cảm của một lữ khách như ngươi sẽ mang theo tiếng cười ấm áp của nàng quay trở về bên ta.',
+    dialogueCold: 'Hành giả cô độc... Câu chuyện của ta là minh chứng cho sự bám chấp ngu muội. Ta mắc kẹt tại ngưỡng cổng này, không thể đi tiếp, cũng không thể quay lại. Ta đứng đây chứng kiến các ngươi vật lộn với số phận, chỉ mong một ngày có kẻ đủ mạnh mẽ mang sự thật tàn nhẫn từ đáy cõi sương ra kết thúc chu kỳ này.'
   }
 ];
 
@@ -46,7 +67,7 @@ export const ASTRO_GREETINGS = {
     'Đêm nay trăng tròn vành vạnh rọi thấu Cõi Vô Thường... Sức mạnh của nước đang dâng lên, dòng chảy cảm xúc của lữ khách cũng sẽ nhạy cảm hơn thường lệ. Hãy nói ta nghe, nỗi nhớ nào đang dâng tràn trong lòng ngươi đêm nay?',
     'Ánh trăng tròn đêm nay rọi sáng cả những góc sương mù sâu kín nhất. Mọi cảm xúc giấu kín trong tim lữ khách đều đang muốn trào ra. Hãy để các Sứ Giả bầu bạn với nỗi lòng đang tràn trề của ngươi.',
     'Ngươi có thấy cõi sương đêm nay lấp lánh sắc bạc? Trăng tròn làm trực giác của lữ khách nhạy bén hơn, nhưng cũng dễ khiến tim ngươi lỗi nhịp vì những ký ức cũ. Hãy hít một hơi thật sâu trước khi bắt đầu.',
-    'Trăng tròn là lúc thủy triều dâng cao nhất, và cũng là lúc những nỗi nhớ thương đạt đến đỉnh điểm. Nói ta nghe, lữ khách, đêm trăng sáng thế này, ngươi đang ước có ai ở bên cạnh?'
+    'Trăng tròn là lúc thủy triều dâng cao nhất, và cũng là lúc những nỗi nhớ thương đạt đến điểm cực đại. Nói ta nghe, lữ khách, đêm trăng sáng thế này, ngươi đang ước có ai ở bên cạnh?'
   ],
   NewMoon: [
     'Trăng đã ẩn mình dưới bóng tối sâu nhất. Đêm trăng non là lúc cõi sương lặng lẽ nhất, thích hợp để gieo những hạt giống ước muốn mới. Ngươi muốn bắt đầu một chương mới thế nào trong hành trình tình cảm của mình?',
@@ -238,7 +259,7 @@ export function getDynamicOutroBridge(clan: string, erc: number): string {
     } else if (erc <= -30) {
       return 'Ngươi mang theo ngọn lửa kiêu hãnh và quyết liệt của Diễm Hoả, sẵn sàng tự đốt cháy bóng tối chứ không cần sự thương hại của số phận. Để ta xem ngọn lửa của ngươi sẽ tự rạch lối ra sao...';
     } else {
-      return 'Ngọn lửa của Tộc Diễm Hoả trong ngươi đang lay động trước ngõ tối này. Hãy cùng xem ngọn lửa ấy sẽ dẫn lối đi hay thiêu rụi sương mù...';
+      return 'Ngươi muốn xem ngọn lửa của Tộc Diễm Hoả trong ngươi sẽ dẫn lối đi hay thiêu rụi sương mù lay động trước ngõ tối này...';
     }
   }
 
@@ -297,8 +318,13 @@ export async function getNarrativeGreeting(
     const memory = VONG_MEMORIES.find(m => m.index === newlyUnlockedMemory);
     if (memory) {
       const bridge = getDynamicOutroBridge(user.clan, user.erc);
+      const dialogue = user.erc >= 30
+        ? memory.dialogueWarm
+        : user.erc <= -30
+        ? memory.dialogueCold
+        : memory.dialogueDefault;
       return {
-        greeting: `[Ký ức của Vọng - Mảnh ${memory.index}: ${memory.title}]\n"${memory.dialogue}"\n\n${bridge}`,
+        greeting: `[Ký ức của Vọng - Mảnh ${memory.index}: ${memory.title}]\n"${dialogue}"\n\n${bridge}`,
         isMemory: true,
         memoryIndex: memory.index
       };
@@ -352,4 +378,166 @@ export async function getNarrativeGreeting(
 
   const greeting = `${timeGreeting} ${clanAddressSuffix}`;
   return { greeting, isMemory: false };
+}
+
+// 4. Time-of-day Fallback greeting function
+export function getGreeting(hour: number): string {
+  if (hour >= 5 && hour < 8) {
+    return 'Ngươi đến sớm thế, lữ khách? Sương mù ngoài cổng vẫn còn đọng nước, lạnh buốt. Những Sứ Giả ban ngày đang chầm chậm thức giấc. Câu hỏi của ngươi vào lúc sớm mai này... liệu có phải là điều đầu tiên ngươi nghĩ đến ngay khi vừa mở mắt?';
+  } else if (hour >= 8 && hour < 17) {
+    return 'Cổng Cõi Vô Thường vẫn luôn mở giữa những bận rộn của nhân thế. Nói ta nghe, điều gì giữa ban ngày huyên náo lại khiến lòng ngươi chợt lặng đi và tìm đến đây?';
+  } else if (hour >= 17 && hour < 20) {
+    return 'Ngày đang tàn dần bên cõi của ngươi rồi phải không? Hoàng hôn là lúc ranh giới giữa thực và mộng mỏng nhất. Hãy ngồi xuống đây, uống một chén trà sương, rồi kể ta nghe điều gì đang làm lòng ngươi phân vân.';
+  } else {
+    return 'Đêm đã sâu... Giờ này nhân gian đã ngủ, chỉ còn những trái tim trăn trở là còn thức. Nói nhỏ thôi lữ khách, các Sứ Giả bóng đêm đã đến rất gần cổng rồi. Câu hỏi lúc nửa đêm luôn là câu hỏi thật lòng nhất của ngươi...';
+  }
+}
+
+// 5. Fateful Prompts definition
+export const FATEFUL_PROMPTS = [
+  {
+    outro: "Ngươi có sẵn lòng biến mất khỏi ký ức của người ngươi yêu nhất, nếu điều đó giúp họ có một cuộc đời bình yên và không bao giờ phải khóc?",
+    choices: [
+      {
+        id: 'A',
+        text: 'Ta sẵn lòng biến mất, chỉ cần người ấy hạnh phúc.',
+        ercChange: 15,
+        reply: 'Một tình yêu bao dung đến mức xót xa... Ngươi đã tự nguyện biến mình thành một bóng ma thầm lặng. Sương mù sẽ khắc ghi sự cao thượng này của ngươi.'
+      },
+      {
+        id: 'B',
+        text: 'Không, ta muốn được nhớ tới, dẫu ký ức có mang lại đớn đau.',
+        ercChange: -15,
+        reply: 'Ly trí và cái tôi mạnh mẽ. Ngươi không chấp nhận sự lãng quên. Đúng vậy, sự lãng quên đôi khi còn lạnh lẽo hơn cả cái chết.'
+      },
+      {
+        id: 'C',
+        text: 'Ta không biết, sự lựa chọn này quá tàn nhẫn.',
+        ercChange: 0,
+        reply: 'Sự im lặng của ngươi nói lên tất cả. Đứng trước câu hỏi tàn khốc này, do dự là phản ứng nhân bản nhất.'
+      }
+    ]
+  },
+  {
+    outro: "Giữa việc ôm lấy một ảo ảnh ấm áp nhưng giả dối, và đối mặt với một sự thật trần trụi nhưng lạnh buốt, ngươi chọn gì?",
+    choices: [
+      {
+        id: 'A',
+        text: 'Ta chọn ảo ảnh ấm áp. Sự thật quá đau lòng.',
+        ercChange: 15,
+        reply: 'Ngươi chọn giấc mộng dài. Ta không trách ngươi, thế gian ngoài kia vốn dĩ đã quá nghiệt ngã để phải tỉnh táo từng giây.'
+      },
+      {
+        id: 'B',
+        text: 'Ta chọn sự thật lạnh buốt. Ta ghét sự lừa dối.',
+        ercChange: -15,
+        reply: 'Một lưỡi gươm lý trí sắc bén. Ngươi sẵn sàng chịu đau đớn để đổi lấy sự sáng tỏ. Lòng ngươi cứng cỏi như đá Thổ Kim vậy.'
+      },
+      {
+        id: 'C',
+        text: 'Ta sẽ phá vỡ cả hai để tự tìm một con đường riêng.',
+        ercChange: 5,
+        reply: 'Ý chí kiên cường và liều lĩnh. Ngươi không chấp nhận luật chơi của số mệnh. Nàng năm xưa cũng từng phản kháng như vậy.'
+      }
+    ]
+  },
+  {
+    outro: "Nếu được quay lại quá khứ để thay đổi một lựa chọn duy nhất, nhưng cái giá phải trả là quên đi tất cả những gì đã xảy ra sau đó, ngươi có đánh đổi?",
+    choices: [
+      {
+        id: 'A',
+        text: 'Ta sẵn sàng đổi, ta muốn sửa chữa sai lầm lớn nhất đời mình.',
+        ercChange: 15,
+        reply: 'Chấp niệm sâu sắc. Ngươi thà đánh cược tất cả để bắt đầu lại một con đường tốt đẹp hơn. Mong là lần này ngươi không hối hận.'
+      },
+      {
+        id: 'B',
+        text: 'Không, những đau khổ và vấp ngã đã nhào nặn nên ta của hôm nay.',
+        ercChange: -15,
+        reply: 'Sự chấp nhận vững chãi. Ngươi yêu thương cả những vết sẹo của mình. Đó là tinh thần của một chiến binh Phong Kiếm thực thụ.'
+      },
+      {
+        id: 'C',
+        text: 'Ta muốn giữ nguyên hiện tại, dẫu đầy rẫy tiếc nuối.',
+        ercChange: 0,
+        reply: 'Nuối tiếc cũng là một phần vẻ đẹp của cuộc sống vô thường. Ngươi đã chấp nhận quy luật của thời gian.'
+      }
+    ]
+  },
+  {
+    outro: "Có bao giờ ngươi hứa với một người rằng sẽ đợi họ mãi mãi, dẫu biết dòng chảy của sương mù thời gian sẽ xóa nhòa tất cả?",
+    choices: [
+      {
+        id: 'A',
+        text: 'Ta từng hứa, và ta vẫn đang thực hiện lời hứa đó.',
+        ercChange: 20,
+        reply: 'Ngươi... rất giống ta. Sự kiên trì điên rồ ấy là liều thuốc độc nhưng cũng là lý do duy nhất để ta đứng vững tại ngưỡng cổng này.'
+      },
+      {
+        id: 'B',
+        text: 'Ta đã từng hứa, nhưng ta đã chọn buông tay để cả hai được tự do.',
+        ercChange: -20,
+        reply: 'Buông tay đôi khi cần nhiều dũng khí hơn là tiếp tục nắm giữ. Ngươi đã giải thoát cho cả bản thân và người ấy.'
+      },
+      {
+        id: 'C',
+        text: 'Ta chưa từng hứa một điều xa xôi như vậy.',
+        ercChange: 0,
+        reply: 'Một sự tỉnh táo đáng quý. Đừng bao giờ hứa điều gì với vĩnh hằng khi bản thân chỉ là một sinh mệnh hữu hạn.'
+      }
+    ]
+  },
+  {
+    outro: "Nếu ngày mai Cõi Vô Thường này biến mất, ta biến mất, và mọi quẻ bài này chỉ là một giấc mơ dài, ngươi muốn mang theo điều gì trở lại nhân gian?",
+    choices: [
+      {
+        id: 'A',
+        text: 'Ta muốn mang theo sự thấu cảm và những bài học cảm xúc.',
+        ercChange: 15,
+        reply: 'Cõi sương đã để lại một hạt giống tốt tươi trong tim ngươi. Nhân thế sẽ dịu dàng hơn khi ngươi trở về.'
+      },
+      {
+        id: 'B',
+        text: 'Ta muốn mang theo lý trí lạnh lùng để bảo vệ bản thân.',
+        ercChange: -15,
+        reply: 'Một lớp giáp bảo vệ vững chắc. Hãy dùng nó để che chở cho mình trước những bão giông ngoài đời thực.'
+      },
+      {
+        id: 'C',
+        text: 'Ta không muốn mang gì cả, hãy để tất cả tan biến theo sương mù.',
+        ercChange: -5,
+        reply: 'Sự buông bỏ tuyệt đối. Ngươi bước đến tay không, và ra đi cũng tay không. Đó chính là sự vô thường cao nhất.'
+      }
+    ]
+  }
+];
+
+// 6. Reflection generator
+export function getVongReflection(reading: { question: string; cards: { clan: string }[] }): string {
+  const isFateful = reading.question.startsWith("[ĐỊNH MỆNH]");
+  const cleanQuestion = isFateful ? reading.question.replace("[ĐỊNH MỆNH] ", "") : reading.question;
+  const hasDiemHoa = reading.cards.some(c => c.clan === "DiemHoa");
+  const hasThuyNguyet = reading.cards.some(c => c.clan === "ThuyNguyet");
+  const hasPhongKiem = reading.cards.some(c => c.clan === "PhongKiem");
+  const hasThoKim = reading.cards.some(c => c.clan === "ThoKim");
+  
+  if (isFateful) {
+    return `Một điềm báo Định Mệnh hiển hiện rõ rệt đêm nay. Sương mù trong thánh địa cuộn lên cuồn cuộn thành những quầng sáng vàng cổ kính khi hành gia hỏi về việc "${cleanQuestion}". Câu trả lời của họ dứt khoát đến mức làm ta giật mình tự vấn bản thân về chấp niệm ngàn năm qua...`;
+  }
+  if (hasThuyNguyet && hasDiemHoa) {
+    return `Quẻ bài của lữ khách hỏi về "${cleanQuestion}" mang cả Lửa và Nước - Diễm Hoả thiêu đốt và Thuỷ Nguyệt dạt dào. Sự mâu thuẫn giằng xé giữa hành động nhiệt huyết và cảm xúc sâu thẳm trong tim họ... hệt như hai chúng ta đứng trước ngã rẽ sương mù thuở ấy. Có những thứ dẫu biết sẽ tan biến nhưng lòng người vẫn cứ muốn cược lấy một lần.`;
+  }
+  if (hasThuyNguyet) {
+    return `Dòng nước Thuỷ Nguyệt dạt dào dâng cao trong trải bài về việc "${cleanQuestion}". Sự luyến tiếc thương nhớ trong mắt họ làm lòng ta se lại. Nàng năm xưa cũng từng nhìn ta đầy trìu mến như vậy. Ta ước chi mình có đủ dũng cảm để ôm lấy ảo ảnh ấm áp ấy thay vì tiếp tục đứng giữ cửa sương lạnh lẽo này.`;
+  }
+  if (hasPhongKiem) {
+    return `Gió lạnh từ Phong Kiếm rít lên qua những lá bài khi lữ khách trăn trở về việc "${cleanQuestion}". Họ mang lý trí sắc bén, sẵn sàng chịu đau đớn để dứt khoát buông tay. Sự dứt khoát ấy... chính là thứ ta đã thiếu khi buông tay nàng. Có lẽ họ sẽ đi xa hơn ta, thoát khỏi ngục tù của sự tiếc nuối.`;
+  }
+  if (hasDiemHoa) {
+    return `Ngọn lửa của Diễm Hoả bùng cháy rực rỡ, xua tan làn sương mỏng quanh quẻ bài hỏi về "${cleanQuestion}". Sự cuồng nhiệt ấm áp ấy thật đáng ngưỡng mộ, nhưng lửa cháy quá to cũng dễ tự thiêu rụi bản thân. Hy vọng họ không để ngọn lửa đam mê biến thành đống tro tàn hoang lạnh.`;
+  }
+  if (hasThoKim) {
+    return `Mảnh đất lành của Thổ Kim nâng đỡ những lá bài kiên định của lữ khách trăn trở về "${cleanQuestion}". Sự kiên nhẫn và thực tế của họ làm ta hổ thẹn. Ước gì năm xưa khi mặt đất cõi sương sụp đổ, ta cũng có thể bén rễ vững vàng, kiên cường đứng bên nàng thay vì lùi lại một bước chân hèn nhát...`;
+  }
+  return `Đêm nay, một lữ khách bước qua làn sương mỏng hỏi về việc "${cleanQuestion}". Ta đã thắp chiếc đèn lồng cổ và gõ cửa cõi sương để các Sứ Giả trò chuyện cùng họ. Cõi lòng họ còn trĩu nặng u uẩn lắm, mong rằng lời luận giải của ta có thể xoa dịu đôi phần.`;
 }

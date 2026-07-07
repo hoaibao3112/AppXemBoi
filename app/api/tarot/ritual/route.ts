@@ -3,12 +3,22 @@ import { prisma } from '@/lib/prisma';
 import { drawCards } from '@/lib/tarot';
 import { generateDailyWhisperWithGemini } from '@/lib/gemini';
 import { handleError } from '@/lib/errors';
+import { isRateLimited } from '@/lib/redis';
 
 export async function GET(req: NextRequest) {
   try {
     const userId = req.headers.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized. User context missing.' }, { status: 401 });
+    }
+
+    // Rate limit: 1 request / 5 seconds / userId
+    const isLimited = await isRateLimited(userId, 'tarot-ritual', 5);
+    if (isLimited) {
+      return NextResponse.json(
+        { error: 'Sương mù chưa kịp tan, lữ khách hãy chờ thêm giây lát...' },
+        { status: 429 }
+      );
     }
 
     const user = await prisma.user.findUnique({

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { playCardRustle, playCardFlip, startFireCrackling, stopFireCrackling } from "@/lib/audio";
 
 interface DiscoveredCard {
   cardId: string;
@@ -25,6 +26,124 @@ interface Region {
   discoveredCount: number;
   isCompleted: boolean;
   treasure: string | null;
+}
+
+function InteractiveRelic({ clan, treasure }: { clan: string; treasure: string }) {
+  const [interacting, setInteracting] = useState(false);
+  const [growStage, setGrowStage] = useState(0); // for ThoKim sprout
+
+  useEffect(() => {
+    return () => {
+      if (clan === "DiemHoa") stopFireCrackling();
+    };
+  }, [clan]);
+
+  const handleInteract = () => {
+    if (interacting) return;
+    setInteracting(true);
+
+    if (clan === "DiemHoa") {
+      startFireCrackling();
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+      setTimeout(() => {
+        stopFireCrackling();
+        setInteracting(false);
+      }, 3000);
+    } else if (clan === "ThuyNguyet") {
+      playCardRustle();
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate([50, 50, 50]);
+      }
+      setTimeout(() => {
+        setInteracting(false);
+      }, 1500);
+    } else if (clan === "PhongKiem") {
+      playCardRustle();
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+      setTimeout(() => {
+        setInteracting(false);
+      }, 800);
+    } else if (clan === "ThoKim") {
+      playCardFlip();
+      setGrowStage((prev) => (prev + 1) % 4);
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(60);
+      }
+      setTimeout(() => {
+        setInteracting(false);
+      }, 1000);
+    } else {
+      setInteracting(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleInteract}
+      className={`w-full rounded-xl p-4 flex items-center justify-between border transition-all duration-500 overflow-hidden relative ${
+        interacting
+          ? "border-amber-400/60 bg-amber-400/10 shadow-[0_0_20px_rgba(212,168,67,0.25)]"
+          : "border-amber-400/20 bg-amber-400/5 hover:border-amber-400/40"
+      }`}
+    >
+      <div className="flex items-center gap-3 relative z-10">
+        <div className="w-12 h-12 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center text-2xl">
+          {clan === "DiemHoa" && (
+            <span className={interacting ? "animate-bounce text-red-500" : "text-amber-500"}>🔥</span>
+          )}
+          {clan === "ThuyNguyet" && (
+            <span className={interacting ? "animate-ping text-cyan-400" : "text-cyan-500"}>🌊</span>
+          )}
+          {clan === "PhongKiem" && (
+            <span className={interacting ? "rotate-45 transition-transform duration-200 text-purple-400" : "text-purple-300"}>⚔️</span>
+          )}
+          {clan === "ThoKim" && (
+            <span>
+              {growStage === 0 && "🌱"}
+              {growStage === 1 && "🌿"}
+              {growStage === 2 && "🪴"}
+              {growStage === 3 && "🌳"}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col text-left">
+          <span className="font-display text-xs text-amber-300 tracking-wider font-semibold">
+            Bảo vật của Tộc đã mở
+          </span>
+          <span className="font-body text-xs text-white/70 italic mt-0.5">
+            "{treasure}"
+          </span>
+          <span className="font-sans text-[8px] text-white/30 mt-0.5 uppercase tracking-widest">
+            {interacting ? "Đang tương tác..." : "Chạm để kích hoạt bảo vật"}
+          </span>
+        </div>
+      </div>
+
+      <div className="text-right relative z-10">
+        <span className="text-[10px] font-sans text-amber-400 border border-amber-400/30 px-2.5 py-0.5 rounded-full bg-amber-400/10 uppercase tracking-wider">
+          {clan === "DiemHoa" && (interacting ? "🔥 Cháy" : "✦ Sẵn sàng")}
+          {clan === "ThuyNguyet" && (interacting ? "🌊 Sóng" : "✦ Sẵn sàng")}
+          {clan === "PhongKiem" && (interacting ? "⚡ Chém" : "✦ Sẵn sàng")}
+          {clan === "ThoKim" && `🌱 Cấp ${growStage + 1}`}
+        </span>
+      </div>
+
+      {interacting && clan === "DiemHoa" && (
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent pointer-events-none animate-pulse" />
+      )}
+      {interacting && clan === "ThuyNguyet" && (
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-transparent pointer-events-none animate-pulse" />
+      )}
+      {interacting && clan === "PhongKiem" && (
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-transparent pointer-events-none" />
+      )}
+    </button>
+  );
 }
 
 export default function BanDoPage() {
@@ -268,26 +387,7 @@ export default function BanDoPage() {
                     {/* Treasure Box */}
                     <div className="border-t border-white/5 pt-3 mt-1">
                       {region.isCompleted ? (
-                        <div
-                          className="rounded-xl p-3 flex items-center justify-between border"
-                          style={{
-                            background: "rgba(212,168,67,0.06)",
-                            borderColor: "rgba(212,168,67,0.25)",
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">👑</span>
-                            <div className="flex flex-col">
-                              <span className="font-display text-xs text-amber-300">
-                                Bảo vật của Tộc đã mở
-                              </span>
-                              <span className="font-body text-xs text-white/60 italic">
-                                "{region.treasure}"
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-xs text-amber-400">★ Đã Nhận</span>
-                        </div>
+                      <InteractiveRelic clan={region.clan} treasure={region.treasure || ""} />
                       ) : (
                         <div className="rounded-xl p-3 flex items-center justify-between border border-dashed border-white/5 bg-white/1 opacity-55">
                           <div className="flex items-center gap-2">

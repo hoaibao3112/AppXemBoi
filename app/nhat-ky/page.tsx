@@ -28,6 +28,35 @@ interface Pagination {
   totalPages: number;
 }
 
+const getVongReflection = (reading: Reading) => {
+  const isFateful = reading.question.startsWith("[ĐỊNH MỆNH]");
+  const cleanQuestion = isFateful ? reading.question.replace("[ĐỊNH MỆNH] ", "") : reading.question;
+  const hasDiemHoa = reading.cards.some(c => c.clan === "DiemHoa");
+  const hasThuyNguyet = reading.cards.some(c => c.clan === "ThuyNguyet");
+  const hasPhongKiem = reading.cards.some(c => c.clan === "PhongKiem");
+  const hasThoKim = reading.cards.some(c => c.clan === "ThoKim");
+  
+  if (isFateful) {
+    return `Một điềm báo Định Mệnh hiển hiện rõ rệt đêm nay. Sương mù trong thánh địa cuộn lên cuồn cuộn thành những quầng sáng vàng cổ kính khi hành gia hỏi về việc "${cleanQuestion}". Câu trả lời của họ dứt khoát đến mức làm ta giật mình tự vấn bản thân về chấp niệm ngàn năm qua...`;
+  }
+  if (hasThuyNguyet && hasDiemHoa) {
+    return `Quẻ bài của lữ khách hỏi về "${cleanQuestion}" mang cả Lửa và Nước - Diễm Hoả thiêu đốt và Thuỷ Nguyệt dạt dào. Sự mâu thuẫn giằng xé giữa hành động nhiệt huyết và cảm xúc sâu thẳm trong tim họ... hệt như hai chúng ta đứng trước ngã rẽ sương mù thuở ấy. Có những thứ dẫu biết sẽ tan biến nhưng lòng người vẫn cứ muốn cược lấy một lần.`;
+  }
+  if (hasThuyNguyet) {
+    return `Dòng nước Thuỷ Nguyệt dạt dào dâng cao trong trải bài về việc "${cleanQuestion}". Sự luyến tiếc thương nhớ trong mắt họ làm lòng ta se lại. Nàng năm xưa cũng từng nhìn ta đầy trìu mến như vậy. Ta ước chi mình có đủ dũng cảm để ôm lấy ảo ảnh ấm áp ấy thay vì tiếp tục đứng giữ cửa sương lạnh lẽo này.`;
+  }
+  if (hasPhongKiem) {
+    return `Gió lạnh từ Phong Kiếm rít lên qua những lá bài khi lữ khách trăn trở về việc "${cleanQuestion}". Họ mang lý trí sắc bén, sẵn sàng chịu đau đớn để dứt khoát buông tay. Sự dứt khoát ấy... chính là thứ ta đã thiếu khi buông tay nàng. Có lẽ họ sẽ đi xa hơn ta, thoát khỏi ngục tù của sự tiếc nuối.`;
+  }
+  if (hasDiemHoa) {
+    return `Ngọn lửa của Diễm Hoả bùng cháy rực rỡ, xua tan làn sương mỏng quanh quẻ bài hỏi về "${cleanQuestion}". Sự cuồng nhiệt ấm áp ấy thật đáng ngưỡng mộ, nhưng lửa cháy quá to cũng dễ tự thiêu rụi bản thân. Hy vọng họ không để ngọn lửa đam mê biến thành đống tro tàn hoang lạnh.`;
+  }
+  if (hasThoKim) {
+    return `Mảnh đất lành của Thổ Kim nâng đỡ những lá bài kiên định của lữ khách trăn trở về "${cleanQuestion}". Sự kiên nhẫn và thực tế của họ làm ta hổ thẹn. Ước gì năm xưa khi mặt đất cõi sương sụp đổ, ta cũng có thể bén rễ vững vàng, kiên cường đứng bên nàng thay vì lùi lại một bước chân hèn nhát...`;
+  }
+  return `Đêm nay, một lữ khách bước qua làn sương mỏng hỏi về việc "${cleanQuestion}". Ta đã thắp chiếc đèn lồng cổ và gõ cửa cõi sương để các Sứ Giả trò chuyện cùng họ. Cõi lòng họ còn trĩu nặng u uẩn lắm, mong rằng lời luận giải của ta có thể xoa dịu đôi phần.`;
+};
+
 export default function NhatKyPage() {
   const router = useRouter();
   const [readings, setReadings] = useState<Reading[]>([]);
@@ -37,6 +66,8 @@ export default function NhatKyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedReading, setExpandedReading] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"user" | "vong">("user");
+  const [userErc, setUserErc] = useState<number>(0);
 
   const fetchReadings = async (currentPage: number, currentClan: string) => {
     setLoading(true);
@@ -74,6 +105,24 @@ export default function NhatKyPage() {
   useEffect(() => {
     fetchReadings(page, clanFilter);
   }, [page, clanFilter]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      fetch("/api/user/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (typeof data.erc === "number") {
+            setUserErc(data.erc);
+          }
+        })
+        .catch(console.error);
+    }
+  }, []);
 
   const handleClanChange = (clan: string) => {
     setClanFilter(clan);
@@ -113,14 +162,44 @@ export default function NhatKyPage() {
     return map[clanName] || "🔮";
   };
 
+  const getCardStyle = (isExpanded: boolean) => {
+    if (userErc >= 50) {
+      return {
+        background: "rgba(35, 25, 10, 0.75)",
+        borderColor: isExpanded ? "rgba(245, 158, 11, 0.5)" : "rgba(245, 158, 11, 0.15)",
+        boxShadow: isExpanded ? "0 0 20px rgba(245, 158, 11, 0.25)" : "0 0 10px rgba(245, 158, 11, 0.05)",
+      };
+    }
+    if (userErc <= -50) {
+      return {
+        background: "rgba(10, 20, 35, 0.75)",
+        borderColor: isExpanded ? "rgba(14, 165, 233, 0.5)" : "rgba(14, 165, 233, 0.15)",
+        boxShadow: isExpanded ? "0 0 20px rgba(14, 165, 233, 0.25)" : "0 0 10px rgba(14, 165, 233, 0.05)",
+      };
+    }
+    return {
+      background: "rgba(15, 22, 41, 0.7)",
+      borderColor: isExpanded ? "rgba(139, 92, 246, 0.3)" : "rgba(255, 255, 255, 0.06)",
+    };
+  };
+
+  const getPageBackgroundStyle = () => {
+    if (userErc >= 50) {
+      return "radial-gradient(ellipse at 50% 10%, rgba(245, 158, 11, 0.15) 0%, transparent 60%)";
+    }
+    if (userErc <= -50) {
+      return "radial-gradient(ellipse at 50% 10%, rgba(14, 165, 233, 0.15) 0%, transparent 60%)";
+    }
+    return "radial-gradient(ellipse at 50% 10%, rgba(139, 92, 246, 0.12) 0%, transparent 50%)";
+  };
+
   return (
     <div className="relative flex flex-col min-h-screen">
       {/* Background */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
-          background:
-            "radial-gradient(ellipse at 50% 10%, rgba(139,92,246,0.12) 0%, transparent 50%)",
+          background: getPageBackgroundStyle(),
         }}
       />
 
@@ -137,7 +216,25 @@ export default function NhatKyPage() {
             📖
           </button>
         </header>
-
+        {/* Tab Switcher */}
+        <div className="flex border-b border-white/5 mx-4 mb-3">
+          <button
+            onClick={() => setActiveTab("user")}
+            className={`flex-1 py-2.5 font-display text-[10px] tracking-widest transition-all text-center border-b-2 ${
+              activeTab === "user" ? "border-purple-400 text-purple-300" : "border-transparent text-white/40"
+            }`}
+          >
+            NHẬT KÝ CỦA BẠN
+          </button>
+          <button
+            onClick={() => setActiveTab("vong")}
+            className={`flex-1 py-2.5 font-display text-[10px] tracking-widest transition-all text-center border-b-2 ${
+              activeTab === "vong" ? "border-amber-400 text-amber-300" : "border-transparent text-white/40"
+            }`}
+          >
+            THÌ THẦM CỦA VỌNG
+          </button>
+        </div>
         {/* Clan filters */}
         <div className="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-hide">
           {[
@@ -201,14 +298,23 @@ export default function NhatKyPage() {
           <div className="flex flex-col gap-4 px-4 py-2">
             {readings.map((reading) => {
               const isExpanded = expandedReading === reading.id;
+              const isFateful = reading.question.startsWith("[ĐỊNH MỆNH]");
+              const cleanQuestion = isFateful ? reading.question.replace("[ĐỊNH MỆNH] ", "") : reading.question;
+              
+              // Custom style overlay if fateful
+              const cardStyle = isFateful
+                ? {
+                    background: "linear-gradient(135deg, rgba(212, 168, 67, 0.1) 0%, rgba(15, 22, 41, 0.85) 100%)",
+                    borderColor: isExpanded ? "rgba(212, 168, 67, 0.55)" : "rgba(212, 168, 67, 0.25)",
+                    boxShadow: isExpanded ? "0 0 25px rgba(212, 168, 67, 0.2)" : "0 0 10px rgba(212, 168, 67, 0.05)",
+                  }
+                : getCardStyle(isExpanded);
+
               return (
                 <div
                   key={reading.id}
-                  className="rounded-2xl overflow-hidden border transition-all duration-300"
-                  style={{
-                    background: "rgba(15,22,41,0.7)",
-                    borderColor: isExpanded ? "rgba(139,92,246,0.3)" : "rgba(255,255,255,0.06)",
-                  }}
+                  className="rounded-2xl overflow-hidden border transition-all duration-300 shadow-md animate-fade-in"
+                  style={cardStyle}
                 >
                   {/* Summary Card Header */}
                   <div
@@ -219,21 +325,39 @@ export default function NhatKyPage() {
                       <span className="font-sans text-[10px] text-white/35">
                         {formatDate(reading.createdAt)}
                       </span>
-                      <span
-                        className="text-[10px] font-sans px-2.5 py-0.5 rounded-full"
-                        style={{
-                          background: reading.ercChange >= 0 ? "rgba(16,185,129,0.1)" : "rgba(244,63,94,0.1)",
-                          border: reading.ercChange >= 0 ? "1px solid rgba(16,185,129,0.25)" : "1px solid rgba(244,63,94,0.25)",
-                          color: reading.ercChange >= 0 ? "#34d399" : "#fb7185",
-                        }}
-                      >
-                        ERC: {reading.ercChange >= 0 ? "+" : ""}{reading.ercChange}
-                      </span>
+                      <div className="flex gap-1.5 items-center">
+                        {isFateful && (
+                          <span className="text-[9px] font-sans px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 text-amber-300 uppercase tracking-wider font-semibold">
+                            👑 ĐỊNH MỆNH
+                          </span>
+                        )}
+                        <span
+                          className="text-[10px] font-sans px-2.5 py-0.5 rounded-full"
+                          style={{
+                            background: reading.ercChange >= 0 ? "rgba(16,185,129,0.1)" : "rgba(244,63,94,0.1)",
+                            border: reading.ercChange >= 0 ? "1px solid rgba(16,185,129,0.25)" : "1px solid rgba(244,63,94,0.25)",
+                            color: reading.ercChange >= 0 ? "#34d399" : "#fb7185",
+                          }}
+                        >
+                          ERC: {reading.ercChange >= 0 ? "+" : ""}{reading.ercChange}
+                        </span>
+                      </div>
                     </div>
 
-                    <h3 className="font-display text-sm text-white/90 leading-snug line-clamp-1">
-                      {reading.question}
-                    </h3>
+                    {activeTab === "vong" ? (
+                      <div className="flex flex-col gap-1 text-left">
+                        <h3 className="font-display text-xs text-amber-300 font-semibold tracking-wide flex items-center gap-1.5">
+                          ✍️ Suy tư ngày {formatDate(reading.createdAt).split(" lúc ")[0]}
+                        </h3>
+                        <p className="font-body text-[11px] text-white/45 leading-relaxed italic truncate">
+                          Lữ khách vấn: "{cleanQuestion}"
+                        </p>
+                      </div>
+                    ) : (
+                      <h3 className={`font-display text-sm leading-snug line-clamp-1 text-left ${isFateful ? "text-amber-100 font-semibold" : "text-white/90"}`}>
+                        {cleanQuestion}
+                      </h3>
+                    )}
 
                     {/* Cards visual preview */}
                     <div className="flex gap-2 mt-1">
@@ -263,11 +387,15 @@ export default function NhatKyPage() {
                     >
                       <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                          <span className="font-display text-[9px] text-white/30 tracking-widest uppercase">
-                            Lời dẫn của Vọng
+                          <span className={`font-display text-[9px] tracking-widest uppercase ${activeTab === "vong" ? "text-amber-400" : "text-white/30"}`}>
+                            {activeTab === "vong" ? "Tự sự của Vọng" : "Lời dẫn của Vọng"}
                           </span>
-                          <p className="font-body text-sm text-white/65 italic leading-relaxed whitespace-pre-line">
-                            {reading.response}
+                          <p className={`font-body text-sm leading-relaxed whitespace-pre-line ${
+                            activeTab === "vong" 
+                              ? "text-amber-100/80 bg-amber-950/15 p-3 rounded-lg border border-amber-500/10 italic" 
+                              : "text-white/65 italic"
+                          }`}>
+                            {activeTab === "vong" ? getVongReflection(reading) : reading.response}
                           </p>
                         </div>
                       </div>

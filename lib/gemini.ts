@@ -1,11 +1,48 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { DrawnCard } from './tarot';
+import { DrawnCard, CLAN_NAMES_VI } from './tarot';
 
 interface UserAIContext {
   name?: string | null;
   clan: string;
   erc: number;
   readingsCount: number;
+}
+
+let cachedGenAI: GoogleGenerativeAI | null = null;
+
+function getGeminiClient(): GoogleGenerativeAI {
+  if (cachedGenAI) {
+    return cachedGenAI;
+  }
+
+  let currentKey = process.env.GEMINI_API_KEY;
+  if (currentKey) {
+    currentKey = currentKey.replace(/['"]/g, '').trim();
+  }
+  if (!currentKey || currentKey === '') {
+    throw new Error('GEMINI_API_KEY is not defined in environment variables');
+  }
+
+  cachedGenAI = new GoogleGenerativeAI(currentKey);
+  return cachedGenAI;
+}
+
+async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: systemPrompt,
+  });
+
+  const result = await model.generateContent(userPrompt);
+  const response = await result.response;
+  const text = response.text();
+  
+  if (!text) {
+    throw new Error('Gemini API returned empty text');
+  }
+
+  return text.trim();
 }
 
 /**
@@ -20,14 +57,6 @@ export async function generateVongCommentaryWithGemini(
   elementalRelation: { relation: string; orientation: string } | null,
   celestialEvents?: { isFullMoon?: boolean; isNewMoon?: boolean; isMercuryRetrograde?: boolean }
 ): Promise<string> {
-  let currentKey = process.env.GEMINI_API_KEY;
-  if (currentKey) {
-    currentKey = currentKey.replace(/['"]/g, '').trim();
-  }
-  if (!currentKey || currentKey === '') {
-    throw new Error('GEMINI_API_KEY is not defined in environment variables');
-  }
-
   // 1. Determine length constraints based on reading counts (Mục 12.1)
   let lengthConstraint = '';
   if (user.readingsCount < 5) {
@@ -120,22 +149,7 @@ Phân tích cấu trúc:
 
 Hãy viết lời thoại giải bài của Vọng:`;
 
-  // Initialize and call Gemini API
-  const genAI = new GoogleGenerativeAI(currentKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    systemInstruction: systemPrompt,
-  });
-
-  const result = await model.generateContent(userPrompt);
-  const response = await result.response;
-  const text = response.text();
-  
-  if (!text) {
-    throw new Error('Gemini API returned empty text');
-  }
-
-  return text.trim();
+  return callGemini(systemPrompt, userPrompt);
 }
 
 /**
@@ -145,14 +159,6 @@ export async function generateDailyWhisperWithGemini(
   cardName: string,
   keywords: string[]
 ): Promise<string> {
-  let currentKey = process.env.GEMINI_API_KEY;
-  if (currentKey) {
-    currentKey = currentKey.replace(/['"]/g, '').trim();
-  }
-  if (!currentKey || currentKey === '') {
-    throw new Error('GEMINI_API_KEY is not defined in environment variables');
-  }
-
   const systemPrompt = `Bạn là Vọng (Người giữ cổng Cõi Vô Thường). Lữ khách vừa thực hiện nghi thức chạm giữ đốt lá thông khô để xua tan sương mù và nhận thông điệp.
 Nhiệm vụ: Hãy đưa ra một "Lời thì thầm của ngày" (Whisper of the Day) cực kỳ ngắn gọn (chỉ đúng 1 câu, khoảng 15-25 từ) mang tính chữa lành, khuyên nhủ và thấu cảm sâu sắc dựa trên năng lượng của lá bài Tarot: ${cardName} (Từ khóa: ${keywords.join(', ')}).
 Yêu cầu bắt buộc:
@@ -162,20 +168,27 @@ Yêu cầu bắt buộc:
 
   const userPrompt = `Hãy nói lời thì thầm chữa lành của ngày hôm nay cho lá bài ${cardName}:`;
 
-  const genAI = new GoogleGenerativeAI(currentKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    systemInstruction: systemPrompt,
-  });
-
-  const result = await model.generateContent(userPrompt);
-  const response = await result.response;
-  const text = response.text();
-
-  if (!text) {
-    throw new Error('Gemini API returned empty text');
-  }
-
-  return text.trim();
+  return callGemini(systemPrompt, userPrompt);
 }
 
+/**
+ * Generates Vọng's brief commentary on another traveler's whisper
+ */
+export async function generateWhisperCommentaryWithGemini(
+  whisperContent: string,
+  whisperClan: string
+): Promise<string> {
+  const clanNameVi = CLAN_NAMES_VI[whisperClan] || 'Vô Thường';
+
+  const systemPrompt = `Bạn là Vọng (Người giữ cổng Cõi Vô Thường). Lữ khách vừa nhìn thấy một lời tâm sự ẩn danh ("thông điệp trong sương") của một lữ khách khác thuộc tộc ${clanNameVi}.
+Nhiệm vụ: Hãy đưa ra một lời bình luận siêu ngắn (chỉ đúng 1 câu, khoảng 15-25 từ) mang giọng điệu trầm buồn, huyền bí, thông cảm sâu sắc về lời tâm sự đó.
+Yêu cầu bắt buộc:
+1. Chỉ trả về duy nhất 1 câu lời bình của Vọng, không thêm tiêu đề hay dấu ngoặc.
+2. Xưng là "ta", gọi lữ khách hiện tại đang đọc là "lữ khách". Nhắc đến người viết tâm sự là "một người bạn của tộc ${clanNameVi}" hoặc "một lữ khách tộc ${clanNameVi}".
+3. CẤM các từ ngữ hiện đại như "Chúc mừng", "Tóm lại", "Nhìn chung".`;
+
+  const userPrompt = `Lời tâm sự trong sương: "${whisperContent}"
+Hãy viết lời bình luận của Vọng:`;
+
+  return callGemini(systemPrompt, userPrompt);
+}

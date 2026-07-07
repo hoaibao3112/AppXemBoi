@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cõi Vô Thường</string>
+    <string name="title_activity_main">Cõi Vô Thường</string>
+    <string name="package_name">com.appxemboi.tarot</string>
+    <string name="custom_url_scheme">com.appxemboi.tarot</string>
+</resources>

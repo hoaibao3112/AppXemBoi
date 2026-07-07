@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { speakText, stopSpeaking } from "@/lib/speech";
 
 // ─── Icons ─────────────────────────────────────────────────────────────────
 function StarIcon() {
@@ -623,22 +624,11 @@ export default function HomePage() {
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
     const hasSeen = localStorage.getItem("hasSeenTutorial");
     if (!hasSeen) {
       setShowWelcomePopup(true);
-    }
-
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      const loadVoices = () => {
-        if (typeof window !== "undefined" && window.speechSynthesis) {
-          setVoices(window.speechSynthesis.getVoices());
-        }
-      };
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
     }
   }, []);
 
@@ -651,28 +641,58 @@ export default function HomePage() {
     setSpeakingIdx(idx);
     setIsPlaying(true);
 
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(TUTORIAL_SENTENCES[idx]);
-      utterance.lang = "vi-VN";
-      utterance.rate = 0.85; // Slow, mystical voice
-      utterance.pitch = 0.85; // Lower pitch
-      
-      const currentVoices = window.speechSynthesis.getVoices();
-      const viVoice = currentVoices.find(v => v.lang.toLowerCase().includes("vi")) || 
-                      voices.find(v => v.lang.toLowerCase().includes("vi"));
-      if (viVoice) {
-        utterance.voice = viVoice;
+    // Stop any ongoing speech
+    stopSpeaking();
+
+    if (typeof window !== "undefined") {
+      let audio = (window as any)._globalAudio;
+      if (!audio) {
+        audio = new Audio();
+        (window as any)._globalAudio = audio;
       }
 
-      utterance.onend = () => {
+      audio.src = `/api/tarot/tts?text=${encodeURIComponent(TUTORIAL_SENTENCES[idx])}`;
+      
+      audio.onended = () => {
         playNextSentence(idx + 1);
       };
-      utterance.onerror = () => {
-        setIsPlaying(false);
+      
+      audio.onerror = () => {
+        console.warn("Audio play failed, falling back to Web Speech API");
+        const utterance = new SpeechSynthesisUtterance(TUTORIAL_SENTENCES[idx]);
+        utterance.lang = "vi-VN";
+        utterance.rate = 0.85;
+        utterance.pitch = 0.85;
+        
+        utterance.onend = () => {
+          playNextSentence(idx + 1);
+        };
+        utterance.onerror = () => {
+          setIsPlaying(false);
+        };
+        
+        if (window.speechSynthesis) {
+          window.speechSynthesis.speak(utterance);
+        }
       };
 
-      window.speechSynthesis.speak(utterance);
+      audio.play().catch(err => {
+        console.warn("Audio autoplay blocked or failed, calling fallback:", err);
+        // If autoplay fails, we immediately fall back to speechSynthesis
+        const utterance = new SpeechSynthesisUtterance(TUTORIAL_SENTENCES[idx]);
+        utterance.lang = "vi-VN";
+        utterance.rate = 0.85;
+        utterance.pitch = 0.85;
+        utterance.onend = () => {
+          playNextSentence(idx + 1);
+        };
+        utterance.onerror = () => {
+          setIsPlaying(false);
+        };
+        if (window.speechSynthesis) {
+          window.speechSynthesis.speak(utterance);
+        }
+      });
     }
   };
 
@@ -683,9 +703,7 @@ export default function HomePage() {
   };
 
   const handleStop = () => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    stopSpeaking();
     setSpeakingIdx(null);
     setIsPlaying(false);
     setShowTutorial(false);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { speakText, stopSpeaking } from "@/lib/speech";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface TarotCard {
@@ -160,19 +161,6 @@ function PositionLabel({ label }: { label: string }) {
 function VongDialogue({ text, visible }: { text: string; visible: boolean }) {
   const [displayedText, setDisplayedText] = useState("");
   const [charIndex, setCharIndex] = useState(0);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      const loadVoices = () => {
-        if (typeof window !== "undefined" && window.speechSynthesis) {
-          setVoices(window.speechSynthesis.getVoices());
-        }
-      };
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-  }, []);
 
   useEffect(() => {
     if (!visible) {
@@ -196,29 +184,14 @@ function VongDialogue({ text, visible }: { text: string; visible: boolean }) {
 
   // Voice synthesis effect
   useEffect(() => {
-    if (visible && text && typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "vi-VN";
-      utterance.rate = 0.85; // Slow, mystical voice
-      utterance.pitch = 0.85; // Lower pitch
-      
-      const currentVoices = window.speechSynthesis.getVoices();
-      const viVoice = currentVoices.find(v => v.lang.toLowerCase().includes("vi")) || 
-                      voices.find(v => v.lang.toLowerCase().includes("vi"));
-      if (viVoice) {
-        utterance.voice = viVoice;
-      }
-      
-      window.speechSynthesis.speak(utterance);
+    if (visible && text) {
+      speakText(text);
     }
 
     return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      stopSpeaking();
     };
-  }, [text, visible, voices]);
+  }, [text, visible]);
 
   useEffect(() => {
     setDisplayedText("");

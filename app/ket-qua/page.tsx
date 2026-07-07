@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { speakText, stopSpeaking } from "@/lib/speech";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface CardResult {
@@ -202,21 +203,6 @@ export default function KetQuaPage() {
     }
   };
 
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-
-  // Pre-load SpeechSynthesis voices
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      const loadVoices = () => {
-        if (typeof window !== "undefined" && window.speechSynthesis) {
-          setVoices(window.speechSynthesis.getVoices());
-        }
-      };
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-  }, []);
-
   useEffect(() => {
     const raw = localStorage.getItem("currentReading");
     if (!raw) {
@@ -232,51 +218,23 @@ export default function KetQuaPage() {
 
   // Speak commentary when reading changes
   useEffect(() => {
-    if (reading && reading.commentary && typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(reading.commentary);
-      utterance.lang = "vi-VN";
-      utterance.rate = 0.85; // Slow, mystical voice
-      utterance.pitch = 0.85; // Lower pitch
-      
-      const currentVoices = window.speechSynthesis.getVoices();
-      const viVoice = currentVoices.find(v => v.lang.toLowerCase().includes("vi")) || 
-                      voices.find(v => v.lang.toLowerCase().includes("vi"));
-      if (viVoice) {
-        utterance.voice = viVoice;
-      }
-      window.speechSynthesis.speak(utterance);
+    if (reading && reading.commentary) {
+      speakText(reading.commentary);
     }
     return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      stopSpeaking();
     };
-  }, [reading, voices]);
+  }, [reading]);
 
   // Speak choice reply when it changes
   useEffect(() => {
-    if (choiceReply && typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(choiceReply);
-      utterance.lang = "vi-VN";
-      utterance.rate = 0.85;
-      utterance.pitch = 0.85;
-      
-      const currentVoices = window.speechSynthesis.getVoices();
-      const viVoice = currentVoices.find(v => v.lang.toLowerCase().includes("vi")) || 
-                      voices.find(v => v.lang.toLowerCase().includes("vi"));
-      if (viVoice) {
-        utterance.voice = viVoice;
-      }
-      window.speechSynthesis.speak(utterance);
+    if (choiceReply) {
+      speakText(choiceReply);
     }
     return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      stopSpeaking();
     };
-  }, [choiceReply, voices]);
+  }, [choiceReply]);
 
   const handleSelectChoice = async (choiceId: "A" | "B" | "C") => {
     if (selectedChoiceId || !reading || loadingChoice) return;

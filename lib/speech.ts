@@ -25,8 +25,8 @@ export function speakText(text: string) {
       (window as any)._globalAudio = audio;
     }
 
-    // 3. Nạp đường dẫn API và phát âm
-    audio.src = `/api/tarot/tts?text=${encodeURIComponent(text)}`;
+    // 3. Nạp đường dẫn API và phát âm (Mặc định dùng giọng nam 'male' cho nhân vật Vọng)
+    audio.src = `/api/tarot/tts?text=${encodeURIComponent(text)}&voice=male`;
     
     const playPromise = audio.play();
     if (playPromise !== undefined) {

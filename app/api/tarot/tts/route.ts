@@ -1,38 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const text = searchParams.get("text");
+  const voiceParam = searchParams.get("voice") || "female";
 
   if (!text) {
     return NextResponse.json({ error: "Text is required" }, { status: 400 });
   }
 
-  // Google Translate TTS endpoint for high-quality, free Vietnamese text-to-speech
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(text)}`;
-
   try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://translate.google.com/'
-      }
+    const tts = new MsEdgeTTS();
+    
+    // Choose high-quality Microsoft Edge Neural Voice
+    // vi-VN-HoaiMyNeural is a beautiful, natural female voice.
+    // vi-VN-NamMinhNeural is a beautiful, natural male voice.
+    const voice = voiceParam === "male" ? "vi-VN-NamMinhNeural" : "vi-VN-HoaiMyNeural";
+    
+    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+
+    // Convert text to stream
+    const { audioStream } = tts.toStream(text);
+
+    // Accumulate the stream chunks into a buffer
+    const chunks: Buffer[] = [];
+    
+    const audioBuffer = await new Promise<Buffer>((resolve, reject) => {
+      audioStream.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      
+      audioStream.on("end", () => {
+        resolve(Buffer.concat(chunks));
+      });
+      
+      audioStream.on("error", (err: any) => {
+        reject(err);
+      });
     });
-
-    if (!res.ok) {
-      throw new Error(`Google Translate TTS returned status ${res.status}`);
-    }
-
-    const audioBuffer = await res.arrayBuffer();
 
     return new NextResponse(audioBuffer, {
       headers: {
         "Content-Type": "audio/mpeg",
-        "Cache-Control": "public, max-age=31536000, immutable", // Cache the audio responses
+        "Cache-Control": "public, max-age=31536000, immutable", // Cache the audio heavily
       },
     });
   } catch (error: any) {
-    console.error("TTS generation failed:", error.message);
+    console.error("Edge TTS generation failed:", error.message);
     return NextResponse.json({ error: "Failed to generate speech" }, { status: 500 });
   }
 }

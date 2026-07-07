@@ -301,7 +301,11 @@ export default function NghiThucDotLaPage() {
             >
               {/* Real Card Illustration Image */}
               <img
-                src={`/cards/${revealedCard.clan}.png`}
+                src={`/cards/${revealedCard.id}.png`}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = `/cards/${revealedCard.clan}.png`;
+                }}
                 alt={revealedCard.name}
                 className="absolute inset-0 w-full h-full object-cover filter brightness-[0.75] contrast-[1.05]"
               />

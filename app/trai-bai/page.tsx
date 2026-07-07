@@ -106,7 +106,11 @@ function CardFront({ card }: { card: TarotCard }) {
     >
       {/* Real Card Illustration Image */}
       <img
-        src={`/cards/${card.clan}.png`}
+        src={`/cards/${card.id}.png`}
+        onError={(e) => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = `/cards/${card.clan}.png`;
+        }}
         alt={card.name}
         className="absolute inset-0 w-full h-full object-cover filter brightness-[0.75] contrast-[1.05]"
       />

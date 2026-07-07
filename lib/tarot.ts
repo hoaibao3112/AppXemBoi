@@ -42,7 +42,8 @@ const majorArcana: TarotCard[] = [
   { id: 'the-moon', name: 'Sứ Giả Ánh Trăng Ảo Ảnh', englishName: 'The Moon', type: 'major', clan: 'VoThuong', rank: '18', keywords: ['Ảo ảnh', 'Nỗi sợ', 'Mông lung', 'Trực giác'] },
   { id: 'the-sun', name: 'Sứ Giả Ánh Dương Rực Rỡ', englishName: 'The Sun', type: 'major', clan: 'VoThuong', rank: '19', keywords: ['Thành công', 'Vui vẻ', 'Ánh sáng', 'Rõ ràng'] },
   { id: 'judgement', name: 'Sứ Giả Phán Xét', englishName: 'Judgement', type: 'major', clan: 'VoThuong', rank: '20', keywords: ['Thức tỉnh', 'Đánh giá', 'Tiếng gọi', 'Giải phóng'] },
-  { id: 'the-world', name: 'Sứ Giả Cõi Giới Trọn Vẹn', englishName: 'The World', type: 'major', clan: 'VoThuong', rank: '21', keywords: ['Trọn vẹn', 'Hoàn thành', 'Hội nhập', 'Thành tựu'] }
+  { id: 'the-world', name: 'Sứ Giả Cõi Giới Trọn Vẹn', englishName: 'The World', type: 'major', clan: 'VoThuong', rank: '21', keywords: ['Trọn vẹn', 'Hoàn thành', 'Hội nhập', 'Thành tựu'] },
+  { id: 'vothuong-secret', name: 'Sứ Giả Vô Thường', englishName: 'The Void Gate', type: 'major', clan: 'VoThuong', rank: '79', keywords: ['Vô định', 'Kết thúc & Khởi đầu', 'Thấu suốt', 'Giải thoát'] }
 ];
 
 // Minor Arcana Generation Helpers
@@ -111,12 +112,12 @@ export const tarotDeck: TarotCard[] = [...majorArcana, ...generateMinorArcana()]
  * - isMercuryRetrograde: 65% reversal rate (otherwise 30% default)
  */
 export function drawCards(count: number, options: DrawOptions = {}): DrawnCard[] {
-  if (count <= 0 || count > tarotDeck.length) {
-    throw new Error(`Invalid card draw count. Must be between 1 and ${tarotDeck.length}`);
+  const availableDeck = tarotDeck.filter(c => c.id !== 'vothuong-secret');
+  if (count <= 0 || count > availableDeck.length) {
+    throw new Error(`Invalid card draw count. Must be between 1 and ${availableDeck.length}`);
   }
 
   const drawn: DrawnCard[] = [];
-  const availableDeck = [...tarotDeck];
 
   for (let i = 0; i < count; i++) {
     // 1. Calculate weights for remaining cards

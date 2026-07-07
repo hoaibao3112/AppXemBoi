@@ -29,6 +29,10 @@ export default function HoiUcPage() {
   const [error, setError] = useState("");
   const [activeMemory, setActiveMemory] = useState<number | null>(null);
 
+  // Mirror shards states
+  const [shards, setShards] = useState<number[]>([]);
+  const [placedShards, setPlacedShards] = useState<number[]>([]);
+
   // Sealed Letter states
   const [openingLetter, setOpeningLetter] = useState(false);
   const [showLetterModal, setShowLetterModal] = useState(false);
@@ -69,6 +73,16 @@ export default function HoiUcPage() {
 
       setUnlocked(data.unlocked);
       setLocked(data.locked);
+
+      const profileRes = await fetch("/api/user/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const profileData = await profileRes.json();
+      if (profileRes.ok && profileData.unlockedShards) {
+        setShards(profileData.unlockedShards);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -131,7 +145,7 @@ export default function HoiUcPage() {
       <div className="relative z-10 flex flex-col pb-28">
         {/* Header */}
         <header className="flex items-center justify-between px-5 py-4">
-          <Link href="/" className="w-9 h-9 rounded-full flex items-center justify-center border border-white/10 text-white/50 hover:text-white/80 transition-all text-sm">
+          <Link href="/ho-so" className="w-9 h-9 rounded-full flex items-center justify-center border border-white/10 text-white/50 hover:text-white/80 transition-all text-sm">
             ‹
           </Link>
           <h1 className="font-display text-base text-white/80 tracking-widest uppercase">
@@ -170,7 +184,95 @@ export default function HoiUcPage() {
         {/* Memories Grid */}
         {!loading && (
           <div className="flex flex-col gap-4 px-4 py-2">
-            
+
+            {/* Chiếc Gương Vỡ Cổ Đại (Shattered Mirror Puzzle) */}
+            <div
+              className="rounded-2xl p-5 border flex flex-col gap-4 text-center relative overflow-hidden bg-white/2"
+              style={{
+                borderColor: "rgba(139, 92, 246, 0.15)",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-display text-[10px] text-white/50 tracking-widest uppercase font-bold">
+                  Nghi Thức Ghép Gương Cổ
+                </span>
+                <span className="text-[9px] font-sans text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded bg-amber-400/5">
+                  {shards.length}/6 mảnh
+                </span>
+              </div>
+
+              {/* Mirror Visual Grid */}
+              <div className="relative w-36 h-36 mx-auto rounded-full border border-purple-500/20 overflow-hidden bg-black/40 flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.1)]">
+                {/* Center core */}
+                <div className="absolute w-12 h-12 rounded-full border border-purple-500/20 bg-purple-950/40 z-10 flex items-center justify-center text-xl shadow-[0_0_10px_rgba(139,92,246,0.2)]">
+                  {placedShards.length === 6 ? "🔮" : "👁"}
+                </div>
+
+                {/* 6 segments using angle-rotations with perfect math */}
+                {[1, 2, 3, 4, 5, 6].map((i) => {
+                  const isPlaced = placedShards.includes(i);
+                  const angle = (i - 1) * 60;
+                  return (
+                    <div
+                      key={i}
+                      className="absolute inset-0 transition-all duration-700"
+                      style={{
+                        transform: `rotate(${angle}deg)`,
+                        clipPath: "polygon(50% 50%, 50% 0%, 93.3% 25%)",
+                        background: isPlaced
+                          ? "linear-gradient(135deg, rgba(167, 139, 250, 0.45), rgba(109, 40, 217, 0.6))"
+                          : "rgba(255,255,255,0.03)",
+                        borderRight: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Shards Inventory Bag */}
+              <div className="flex flex-col gap-2">
+                <span className="font-sans text-[9px] text-white/35">Bao cát tâm linh (Click các mảnh đã thu thập để khảm gương)</span>
+                <div className="flex justify-center gap-2 flex-wrap">
+                  {[1, 2, 3, 4, 5, 6].map((i) => {
+                    const isUnlocked = shards.includes(i);
+                    const isPlaced = placedShards.includes(i);
+                    return (
+                      <button
+                        key={i}
+                        disabled={!isUnlocked || isPlaced}
+                        onClick={() => setPlacedShards([...placedShards, i])}
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-display transition-all ${
+                          isPlaced
+                            ? "bg-purple-500/10 border border-purple-500/30 text-purple-300 opacity-40 cursor-default"
+                            : isUnlocked
+                            ? "bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:scale-105 active:scale-95 cursor-pointer shadow-[0_0_10px_rgba(212,168,67,0.15)] animate-pulse"
+                            : "bg-white/2 border border-white/5 text-white/10 cursor-not-allowed"
+                        }`}
+                      >
+                        M{i}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Puzzle resolved / Unlock story modal */}
+              {placedShards.length === 6 && (
+                <div className="mt-2 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col gap-3 text-left animate-fade-in">
+                  <span className="font-display text-[9px] text-amber-400 tracking-wider font-bold">
+                    📜 KHẢM THÀNH CÔNG GƯƠNG THẦN
+                  </span>
+                  <p className="font-body text-xs text-white/70 leading-relaxed italic">
+                    "Ngươi nhìn sâu vào chiếc gương nay đã lành lặn. Lớp sương mù phản chiếu một tế đàn cổ đại ngập tràn tuyết trắng. Vọng đứng đó, mặc xiêm y tế ty của Đền thờ Sương Mù ngàn năm trước. Để ngăn không cho vết nứt của thời không nuốt chửng lục địa này, Vọng đã hiến tế thể xác, giam linh hồn mình vào chiếc gương ngọc bích, trở thành Sứ Giả Vô Thường canh giữ cõi sương."
+                  </p>
+                  <div className="h-px bg-amber-500/20" />
+                  <p className="font-body text-xs text-white/55 leading-relaxed italic">
+                    Vọng quay lại nhìn ngươi, nét mặt bình lặng vô úy: "Lữ khách... Cảm ơn ngươi đã cùng ta đi hết đoạn đường. Giờ đây, gương lành, khế ước hoàn thành. Ngươi đã được thấu suốt Cõi Vô Thường."
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* ── Sealed Letter Card ─────────────────── */}
             <div
               onClick={openLetter}
@@ -424,10 +526,11 @@ export default function HoiUcPage() {
       >
         <div className="flex items-center justify-around py-3 px-4">
           {[
-            { href: "/", icon: "🗺️", label: "Map" },
-            { href: "/chon-trai-bai", icon: "📖", label: "Bói" },
-            { href: "/nhat-ky", icon: "📋", label: "Journal" },
-            { href: "/hoi-uc", icon: "🔮", label: "Memory", active: true },
+            { href: "/ban-do", icon: "🗺️", label: "Cõi Giới" },
+            { href: "/thanh-dia", icon: "🔥", label: "Thánh Địa" },
+            { href: "/chon-trai-bai", icon: "🔮", label: "Trải Bài" },
+            { href: "/nhat-ky", icon: "📋", label: "Nhật Ký" },
+            { href: "/ho-so", icon: "👤", label: "Hồ Sơ", active: true },
           ].map((item) => (
             <Link
               key={item.href}

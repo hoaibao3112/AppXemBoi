@@ -4,6 +4,26 @@ import { drawCards } from '@/lib/tarot';
 import { generateDailyWhisperWithGemini } from '@/lib/gemini';
 import { handleError } from '@/lib/errors';
 import { isRateLimited } from '@/lib/redis';
+import { isEclipseEvent } from '@/lib/lunar';
+
+function adjustWhisperWithPersona(baseWhisper: string, erc: number): string {
+  if (erc >= 30) {
+    return baseWhisper + " Hãy lắng nghe tiếng ta, ngươi sẽ luôn được chở che.";
+  } else if (erc <= -30) {
+    return baseWhisper + " Trận sương này sẽ nuốt chửng kẻ do dự. Hãy tự lo cho mình.";
+  }
+  return baseWhisper;
+}
+
+function glitchText(text: string): string {
+  const chars = text.split("");
+  const glitchedChars = chars.map((char) => {
+    if (char === " " || Math.random() > 0.15) return char;
+    const glitchMarks = ["̵", "̶", "̷", "̴", "̙", "̞"];
+    return char + glitchMarks[Math.floor(Math.random() * glitchMarks.length)];
+  });
+  return "H̶ỗ̵n̵ ̸l̶o̶ạ̶n̵ ̶v̶ũ̶ ̵t̶r̶ụ̶: " + glitchedChars.join("");
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -52,6 +72,15 @@ export async function GET(req: NextRequest) {
         const keywordText = card.keywords.slice(0, 2).join(' và ');
         whisper = `Hôm nay, hãy chiêm nghiệm về năng lượng của Sứ Giả ${card.name}. Mọi quyết định của lữ khách nên được soi rọi bởi sự ${keywordText} để giữ cõi lòng luôn phẳng lặng như mặt nước Thuỷ Nguyệt.`;
       }
+    }
+
+    // Adjust whisper with Vọng Persona based on user's ERC
+    whisper = adjustWhisperWithPersona(whisper, user.erc);
+
+    // Apply Eclipse glitch effect if active
+    const isEclipse = isEclipseEvent();
+    if (isEclipse) {
+      whisper = glitchText(whisper);
     }
 
     return NextResponse.json({

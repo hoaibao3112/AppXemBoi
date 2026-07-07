@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { speakText, stopSpeaking } from "@/lib/speech";
 
 // ─── Icons ─────────────────────────────────────────────────────────────────
@@ -202,10 +203,11 @@ function RealmZone({ icon, name, desc, unlocked, total, color }: RealmZoneProps)
 // ─── Bottom Nav ─────────────────────────────────────────────────────────────
 function BottomNav({ active }: { active: string }) {
   const navItems = [
-    { href: "/thanh-dia", label: "Thánh Địa", icon: "🗺️" },
-    { href: "/nhat-ky", label: "Nhật Ký", icon: "📖" },
-    { href: "/kho-bau", label: "Kho Báu", icon: "💎" },
-    { href: "/oracle", label: "Oracle", icon: "✨" },
+    { href: "/ban-do", label: "Cõi Giới", icon: "🗺️" },
+    { href: "/thanh-dia", label: "Thánh Địa", icon: "🔥" },
+    { href: "/chon-trai-bai", label: "Trải Bài", icon: "🔮" },
+    { href: "/nhat-ky", label: "Nhật Ký", icon: "📋" },
+    { href: "/ho-so", label: "Hồ Sơ", icon: "👤" },
   ];
 
   return (
@@ -568,9 +570,10 @@ function WhisperInTheMistWidget() {
 // ─── Top Header ─────────────────────────────────────────────────────────────
 interface TopHeaderProps {
   onOpenTutorial: () => void;
+  isLoggedIn: boolean;
 }
 
-function TopHeader({ onOpenTutorial }: TopHeaderProps) {
+function TopHeader({ onOpenTutorial, isLoggedIn }: TopHeaderProps) {
   return (
     <header className="flex items-center justify-between px-5 py-4">
       <div className="flex items-center gap-2">
@@ -591,17 +594,31 @@ function TopHeader({ onOpenTutorial }: TopHeaderProps) {
           <span>👁️</span>
           THÌ THẦM LỜI DẪN
         </button>
-        <Link
-          href="/dang-nhap"
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-sans font-medium text-white/70 hover:text-white transition-colors"
-          style={{
-            background: "rgba(139, 92, 246, 0.15)",
-            border: "1px solid rgba(139, 92, 246, 0.3)",
-          }}
-        >
-          <span>🌙</span>
-          ĐĂNG NHẬP
-        </Link>
+        {isLoggedIn ? (
+          <Link
+            href="/ho-so"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-sans font-medium text-purple-300 hover:text-white transition-colors"
+            style={{
+              background: "rgba(139, 92, 246, 0.15)",
+              border: "1px solid rgba(139, 92, 246, 0.3)",
+            }}
+          >
+            <span>👤</span>
+            HỒ SƠ
+          </Link>
+        ) : (
+          <Link
+            href="/dang-nhap"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-sans font-medium text-white/70 hover:text-white transition-colors"
+            style={{
+              background: "rgba(139, 92, 246, 0.15)",
+              border: "1px solid rgba(139, 92, 246, 0.3)",
+            }}
+          >
+            <span>🌙</span>
+            ĐĂNG NHẬP
+          </Link>
+        )}
       </div>
     </header>
   );
@@ -620,17 +637,38 @@ const TUTORIAL_SENTENCES = [
 ];
 
 export default function HomePage() {
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    if (token) {
+      setIsLoggedIn(true);
+      let hasBirthDate = false;
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          if (parsed.birthDate) hasBirthDate = true;
+        } catch (e) {}
+      }
+      if (hasBirthDate) {
+        router.replace("/ban-do");
+      } else {
+        router.replace("/chao-don");
+      }
+      return;
+    }
+
     const hasSeen = localStorage.getItem("hasSeenTutorial");
     if (!hasSeen) {
       setShowWelcomePopup(true);
     }
-  }, []);
+  }, [router]);
 
   const playNextSentence = (idx: number) => {
     if (idx >= TUTORIAL_SENTENCES.length) {
@@ -676,7 +714,7 @@ export default function HomePage() {
         }
       };
 
-      audio.play().catch(err => {
+      audio.play().catch((err: any) => {
         console.warn("Audio autoplay blocked or failed, calling fallback:", err);
         // If autoplay fails, we immediately fall back to speechSynthesis
         const utterance = new SpeechSynthesisUtterance(TUTORIAL_SENTENCES[idx]);
@@ -734,7 +772,7 @@ export default function HomePage() {
 
       {/* Page content */}
       <div className="relative z-10 flex flex-col pb-20">
-        <TopHeader onOpenTutorial={() => { setShowTutorial(true); playNextSentence(0); }} />
+        <TopHeader onOpenTutorial={() => { setShowTutorial(true); playNextSentence(0); }} isLoggedIn={isLoggedIn} />
 
         {/* ── Hero Section ───────────────────────────────── */}
         <section className="px-5 py-4 flex flex-col gap-5">
@@ -1074,7 +1112,7 @@ export default function HomePage() {
       )}
 
       {/* Bottom Navigation */}
-      <BottomNav active="Thánh Địa" />
+      <BottomNav active="" />
     </div>
   );
 }

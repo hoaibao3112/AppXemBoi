@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { speakText, stopSpeaking } from "@/lib/speech";
-import { playCardFlip, playCardRustle } from "@/lib/audio";
+import { playCardFlip, playCardRustle, playCardSlide, triggerHaptic } from "@/lib/audio";
+import { getCelestialEvents } from "@/lib/lunar";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface TarotCard {
@@ -34,9 +35,13 @@ interface ReadingPayload {
   outro: string;
   choices: Choice[];
   fatefulIndex?: number;
+  newlyUnlockedMemories?: number[];
+  canInitiatePact?: boolean;
+  pactCardId?: string | null;
+  shardAwarded?: number | null;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// --- Helpers ----------------------------------------------------------------
 const getClanColor = (clan: string) => {
   const map: Record<string, string> = {
     DiemHoa: "#f97316",
@@ -81,7 +86,37 @@ const getClanNameVi = (clan: string) => {
   return map[clan] || "Cõi Vô Thường";
 };
 
-// ─── Tarot Card Back ─────────────────────────────────────────────────────────
+const PRESET_CATEGORIES = [
+  {
+    id: "love",
+    label: "❤️ Tình Duyên",
+    questions: [
+      "Liệu mối lương duyên này có bền lâu?",
+      "Khi nào tri kỷ thực sự của ta sẽ xuất hiện?",
+      "Làm sao để thấu hiểu người ấy hơn?"
+    ]
+  },
+  {
+    id: "career",
+    label: "💼 Sự Nghiệp",
+    questions: [
+      "Lối đi nào tốt nhất cho công việc hiện tại?",
+      "Có nên mạo hiểm thực hiện dự án mới?",
+      "Làm cách nào để vượt qua áp lực bế tắc?"
+    ]
+  },
+  {
+    id: "self",
+    label: "🌌 Bản Thân",
+    questions: [
+      "Năng lượng tiêu cực nào đang cản trở ta?",
+      "Thông điệp của Sứ Giả dành cho ta hôm nay.",
+      "Bài học lớn nhất ta cần học lúc này là gì?"
+    ]
+  }
+];
+
+// --- Tarot Card Back ---------------------------------------------------------
 function CardBack() {
   return (
     <div
@@ -112,7 +147,7 @@ function CardBack() {
   );
 }
 
-// ─── Tarot Card Front ────────────────────────────────────────────────────────
+// --- Tarot Card Front --------------------------------------------------------
 function CardFront({ card }: { card: TarotCard }) {
   const color = getClanColor(card.clan);
   const tribeName = getClanNameVi(card.clan);
@@ -248,7 +283,7 @@ function SmallCard({
   );
 }
 
-// ─── Position Label ──────────────────────────────────────────────────────────
+// --- Position Label ----------------------------------------------------------
 function PositionLabel({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2 mb-2">
@@ -261,8 +296,18 @@ function PositionLabel({ label }: { label: string }) {
   );
 }
 
-// ─── Vong Dialogue ───────────────────────────────────────────────────────────
-function VongDialogue({ text, visible }: { text: string; visible: boolean }) {
+// --- Vong Dialogue -----------------------------------------------------------
+function VongDialogue({
+  text,
+  visible,
+  erc = 0,
+  isEclipse = false,
+}: {
+  text: string;
+  visible: boolean;
+  erc?: number;
+  isEclipse?: boolean;
+}) {
   const [displayedText, setDisplayedText] = useState("");
   const [charIndex, setCharIndex] = useState(0);
 
@@ -304,12 +349,44 @@ function VongDialogue({ text, visible }: { text: string; visible: boolean }) {
 
   if (!visible) return null;
 
+  // Determine styles dynamically based on Vọng's persona & celestial events
+  let tag = "VỌNG";
+  let icon = "👁";
+  let borderColor = "rgba(139, 92, 246, 0.25)";
+  let glowShadow = "none";
+  let background = "rgba(15, 10, 35, 0.85)";
+  let tagColorClass = "text-purple-300/70";
+
+  if (isEclipse) {
+    tag = "V̵O̵N̵G̵";
+    icon = "🌀";
+    borderColor = "rgba(139, 92, 246, 0.45)";
+    glowShadow = "0 0 25px rgba(139, 92, 246, 0.35)";
+    background = "rgba(15, 10, 35, 0.9)";
+    tagColorClass = "text-purple-400 animate-pulse";
+  } else if (erc >= 30) {
+    tag = "QUANG VỌNG 🌟";
+    icon = "✨";
+    borderColor = "rgba(212, 168, 67, 0.4)";
+    glowShadow = "0 0 25px rgba(212, 168, 67, 0.2)";
+    background = "rgba(25, 20, 15, 0.9)";
+    tagColorClass = "text-amber-300 font-bold";
+  } else if (erc <= -30) {
+    tag = "HẮC VỌNG ⚔️";
+    icon = "👿";
+    borderColor = "rgba(239, 68, 68, 0.35)";
+    glowShadow = "0 0 25px rgba(239, 68, 68, 0.2)";
+    background = "rgba(15, 10, 10, 0.95)";
+    tagColorClass = "text-red-400 font-bold";
+  }
+
   return (
     <div
       className="mx-4 rounded-xl p-4 relative overflow-hidden animate-fade-in"
       style={{
-        background: "rgba(15, 10, 35, 0.85)",
-        border: "1px solid rgba(139, 92, 246, 0.25)",
+        background,
+        border: `1px solid ${borderColor}`,
+        boxShadow: glowShadow,
         backdropFilter: "blur(16px)",
       }}
     >
@@ -317,14 +394,20 @@ function VongDialogue({ text, visible }: { text: string; visible: boolean }) {
         <div
           className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-base pulse-glow"
           style={{
-            background: "linear-gradient(135deg, rgba(139,92,246,0.3), rgba(109,40,217,0.4))",
-            border: "1px solid rgba(167,139,250,0.4)",
+            background: isEclipse
+              ? "linear-gradient(135deg, rgba(139,92,246,0.3), rgba(239,68,68,0.4))"
+              : erc >= 30
+              ? "linear-gradient(135deg, rgba(212,168,67,0.3), rgba(200,146,45,0.4))"
+              : erc <= -30
+              ? "linear-gradient(135deg, rgba(239,68,68,0.3), rgba(15,10,25,0.4))"
+              : "linear-gradient(135deg, rgba(139,92,246,0.3), rgba(109,40,217,0.4))",
+            border: `1px solid ${borderColor}`,
           }}
         >
-          👁
+          {icon}
         </div>
         <div className="flex flex-col gap-1 text-left">
-          <span className="font-display text-[10px] text-purple-300/70 tracking-widest">VỌNG</span>
+          <span className={`font-display text-[10px] tracking-widest ${tagColorClass}`}>{tag}</span>
           <p className="font-body text-sm text-white/75 leading-relaxed italic">
             {displayedText}
             {charIndex < text.length && (
@@ -337,13 +420,137 @@ function VongDialogue({ text, visible }: { text: string; visible: boolean }) {
   );
 }
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
+// ─── Scratch Card Overlay Component ──────────────────────────────────────────
+function ScratchCard({ onReveal }: { onReveal: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawing = useRef(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = canvas.offsetWidth || 144;
+    canvas.height = canvas.offsetHeight || 224;
+
+    // Draw mystical fog
+    ctx.fillStyle = "rgba(22, 28, 45, 0.96)"; // dark fog
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Star dust particles
+    ctx.fillStyle = "rgba(139, 92, 246, 0.25)";
+    for (let i = 0; i < 25; i++) {
+      ctx.beginPath();
+      ctx.arc(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        Math.random() * 15 + 4,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "rgba(212, 168, 67, 0.15)";
+    for (let i = 0; i < 15; i++) {
+      ctx.beginPath();
+      ctx.arc(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        Math.random() * 10 + 2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    // Text instructions
+    ctx.fillStyle = "rgba(212, 168, 67, 0.6)";
+    ctx.font = "bold 9px Cinzel, serif";
+    ctx.textAlign = "center";
+    ctx.fillText("VUỐT ĐỂ XÓA SƯƠNG", canvas.width / 2, canvas.height / 2 - 5);
+    
+    ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.font = "italic 8px Cormorant Garamond, serif";
+    ctx.fillText("Giải trừ sương mù để lật bài", canvas.width / 2, canvas.height / 2 + 10);
+  }, []);
+
+  const getClearedPercent = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    try {
+      const imgData = ctx.getImageData(0, 0, width, height);
+      const data = imgData.data;
+      let cleared = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i] === 0) cleared++;
+      }
+      return (cleared / (width * height)) * 100;
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  const clickCount = useRef(0);
+
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(x, y, 25, 0, Math.PI * 2);
+    ctx.fill();
+
+    const percent = getClearedPercent(ctx, canvas.width, canvas.height);
+    if (percent > 60) {
+      onReveal();
+    }
+  };
+
+  return (
+    <canvas
+      ref={canvasRef}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        isDrawing.current = true;
+      }}
+      onPointerUp={(e) => {
+        e.preventDefault();
+        isDrawing.current = false;
+      }}
+      onPointerLeave={() => {
+        isDrawing.current = false;
+      }}
+      onPointerMove={draw}
+      onClick={() => {
+        clickCount.current += 1;
+        if (clickCount.current >= 3) {
+          onReveal();
+        }
+      }}
+      className="absolute inset-0 w-full h-full rounded-xl z-20 cursor-pointer touch-none"
+    />
+  );
+}
+
+// --- Main Page ---------------------------------------------------------------
 export default function TraiBaiPage() {
   const router = useRouter();
-  const [phase, setPhase] = useState<'input' | 'draw' | 'result'>('input');
+  const [phase, setPhase] = useState<'input' | 'spread' | 'draw' | 'result'>('input');
   
   // Phase 1 states
   const [question, setQuestion] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [isShuffling, setIsShuffling] = useState(false);
+  const [selectedCardIndices, setSelectedCardIndices] = useState<number[]>([]);
   const [isFullMoon, setIsFullMoon] = useState(false);
   const [isNewMoon, setIsNewMoon] = useState(false);
   const [isMercuryRetrograde, setIsMercuryRetrograde] = useState(false);
@@ -354,6 +561,10 @@ export default function TraiBaiPage() {
   const [apiResponse, setApiResponse] = useState<ReadingPayload | null>(null);
   const [showDialogue, setShowDialogue] = useState(false);
   const [currentDialogue, setCurrentDialogue] = useState("");
+  const [userErc, setUserErc] = useState(0);
+  const [isEclipse, setIsEclipse] = useState(false);
+  const [pactAccepted, setPactAccepted] = useState(false);
+  const [acceptingPact, setAcceptingPact] = useState(false);
 
   // Common states
   const [loading, setLoading] = useState(false);
@@ -367,11 +578,36 @@ export default function TraiBaiPage() {
   const [whisperText, setWhisperText] = useState("");
   const [submittingWhisper, setSubmittingWhisper] = useState(false);
   const [whisperSubmitted, setWhisperSubmitted] = useState(false);
+  const [ercToast, setErcToast] = useState<{ value: number; message: string } | null>(null);
+  const [unlockedMemoryPopup, setUnlockedMemoryPopup] = useState<{ index: number; title: string } | null>(null);
 
-  const positions = ["BẢN THÂN", "ĐỐI PHƯƠNG", "MỐI QUAN HỆ"];
+  const getPositionName = (idx: number) => {
+    const total = cards.length;
+    if (total === 1) return "THÔNG ĐIỆP CHỈ DẪN";
+    if (total === 5) {
+      const fivePositions = ["BẢN THÂN", "QUÁ KHỨ", "TƯƠNG LAI", "NGUYÊN NHÂN", "KẾT QUẢ"];
+      return fivePositions[idx] || `LÁ BÀI ${idx + 1}`;
+    }
+    const threePositions = ["BẢN THÂN", "ĐỐI PHƯƠNG", "MỐI QUAN HỆ"];
+    return threePositions[idx] || `LÁ BÀI ${idx + 1}`;
+  };
 
   // Stop speaking when unmounting
   useEffect(() => {
+    const events = getCelestialEvents();
+    setIsFullMoon(events.isFullMoon);
+    setIsNewMoon(events.isNewMoon);
+    setIsMercuryRetrograde(events.isMercuryRetrograde);
+    setIsEclipse(events.isEclipse);
+
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUserErc(parsed.erc || 0);
+      } catch (e) {}
+    }
+
     return () => {
       stopSpeaking();
     };
@@ -402,6 +638,7 @@ export default function TraiBaiPage() {
         },
         body: JSON.stringify({
           question,
+          currentHour: new Date().getHours(),
           celestialEvents: {
             isFullMoon,
             isNewMoon,
@@ -414,6 +651,17 @@ export default function TraiBaiPage() {
       if (!res.ok) throw new Error(data.error || "Không thể khởi tạo trải bài.");
 
       setApiResponse(data);
+      setPactAccepted(false);
+
+      if (data.shardAwarded) {
+        setErcToast({
+          value: 0,
+          message: `✨ Ngươi tìm thấy Mảnh Gương Vỡ #${data.shardAwarded} trôi dạt trong sương mù.`
+        });
+        setTimeout(() => {
+          setErcToast(null);
+        }, 4000);
+      }
       setCards(
         data.cards.map((c: any) => ({
           id: c.id,
@@ -426,9 +674,14 @@ export default function TraiBaiPage() {
         }))
       );
       
-      setCurrentDialogue(data.greeting || "Sương mù cuộn lên... Hãy chạm để lật mở từng lá bài số mệnh.");
-      setShowDialogue(true);
-      setPhase('draw');
+      setIsShuffling(true);
+      setSelectedCardIndices([]);
+      try { playCardRustle(); } catch (e) {}
+
+      setTimeout(() => {
+        setIsShuffling(false);
+        setPhase('spread');
+      }, 1500);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -441,6 +694,7 @@ export default function TraiBaiPage() {
 
     try {
       playCardFlip();
+      triggerHaptic(60);
     } catch (e) {}
 
     const newCards = [...cards];
@@ -455,11 +709,11 @@ export default function TraiBaiPage() {
     const cardKeywords = drawnCard.keywords ? drawnCard.keywords.slice(0, 3).join(", ") : "";
     
     // 1. Vọng lập tức đọc tên lá bài và các từ khóa tiếng Việt bằng giọng AI
-    const voiceText = `Lá bài ${positions[index]}: Sứ Giả ${drawnCard.name}${cardDirection}. Từ khóa chính: ${cardKeywords}.`;
+    const voiceText = `Lá bài ${getPositionName(index)}: Sứ Giả ${drawnCard.name}${cardDirection}. Từ khóa chính: ${cardKeywords}.`;
     speakText(voiceText);
 
     // 2. Cập nhật dòng thoại phụ trên màn hình
-    setCurrentDialogue(`Lá bài ${positions[index]} đã hé mở: Sứ Giả ${drawnCard.name} (${drawnCard.englishName}) mang thông điệp về: ${cardKeywords}.`);
+    setCurrentDialogue(`Lá bài ${getPositionName(index)} đã hé mở: Sứ Giả ${drawnCard.name} (${drawnCard.englishName}) mang thông điệp về: ${cardKeywords}.`);
     setShowDialogue(true);
   };
 
@@ -470,6 +724,22 @@ export default function TraiBaiPage() {
       // Tự động phát luận giải chi tiết khi vào màn hình kết quả
       if (apiResponse.commentary) {
         speakText(apiResponse.commentary);
+      }
+      if (apiResponse.newlyUnlockedMemories && apiResponse.newlyUnlockedMemories.length > 0) {
+        const firstUnlockedIndex = apiResponse.newlyUnlockedMemories[0];
+        const memoryTitles: Record<number, string> = {
+          1: 'Ngưỡng cửa không tuổi',
+          2: 'Người đồng hành đầu tiên',
+          3: 'Sự lựa chọn bên rìa vực thẳm',
+          4: 'Khoảnh khắc đổ vỡ',
+          5: 'Cái chết của một lời hứa',
+          6: 'Sự ra đời của các Sứ Giả',
+          7: 'Kẻ đợi chờ ngàn năm',
+        };
+        setUnlockedMemoryPopup({
+          index: firstUnlockedIndex,
+          title: memoryTitles[firstUnlockedIndex] || `Mảnh Hồi Ức ${firstUnlockedIndex}`
+        });
       }
     }
   };
@@ -504,6 +774,32 @@ export default function TraiBaiPage() {
 
       setSelectedChoiceId(choiceId);
       setChoiceReply(data.reply);
+      setUserErc(data.newErc);
+
+      // Update cached user ERC
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          parsed.erc = data.newErc;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        } catch (e) {}
+      }
+
+      const selectedChoice = apiResponse.choices.find((c) => c.id === choiceId);
+      const ercChange = selectedChoice ? selectedChoice.ercChange : 0;
+
+      let ercMessage = "Vọng gật đầu trầm ngâm...";
+      if (ercChange > 0) {
+        ercMessage = `Vọng cảm nhận được sự ấm áp của ngươi... (+${ercChange} ERC)`;
+      } else if (ercChange < 0) {
+        ercMessage = `Vọng thấy sự dứt khoát trong bước chân ngươi... (${ercChange} ERC)`;
+      }
+
+      setErcToast({ value: ercChange, message: ercMessage });
+      setTimeout(() => {
+        setErcToast(null);
+      }, 4000);
       
       // Đọc to phản hồi lựa chọn của Vọng
       speakText(data.reply);
@@ -511,6 +807,50 @@ export default function TraiBaiPage() {
       setError(err.message);
     } finally {
       setLoadingChoice(false);
+    }
+  };
+
+  const handleAcceptPact = async () => {
+    if (!apiResponse || !apiResponse.pactCardId || acceptingPact || pactAccepted) return;
+    setAcceptingPact(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/user/pact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ cardId: apiResponse.pactCardId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không thể tiếp nhận khế ước.");
+
+      setPactAccepted(true);
+      triggerHaptic([100, 50, 100]);
+
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          parsed.activePactCardId = apiResponse.pactCardId;
+          parsed.activePactTarget = data.activePact.target;
+          parsed.activePactExpiresAt = data.activePact.expiresAt;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        } catch (e) {}
+      }
+
+      setErcToast({
+        value: 0,
+        message: "📜 Ký khế ước thành công! Sứ giả đang đợi ngươi tại Cõi Giới."
+      });
+      setTimeout(() => {
+        setErcToast(null);
+      }, 4000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setAcceptingPact(false);
     }
   };
 
@@ -589,11 +929,46 @@ export default function TraiBaiPage() {
           </div>
         </header>
 
-        {/* ── PHASE 1: INPUT QUESTION ─────────────────────────────── */}
+        {/* --- PHASE 1: INPUT QUESTION --------------------------------------------- */}
         {phase === 'input' && (
           <div className="px-4 py-2 mt-4 flex flex-col gap-6 animate-fade-in">
-            <div className="glass rounded-2xl p-5 flex flex-col gap-4 text-center">
-              <span className="text-3xl animate-pulse">🔮</span>
+            {isShuffling ? (
+              <div className="glass rounded-2xl p-10 flex flex-col gap-6 text-center justify-center items-center min-h-[300px] relative overflow-hidden">
+                <style dangerouslySetInnerHTML={{__html: `
+                  @keyframes mystical-shuffle {
+                    0% { transform: translate(0, 0) rotate(0deg); }
+                    50% { transform: translate(25px, 3px) rotate(8deg); }
+                    100% { transform: translate(-25px, -3px) rotate(-8deg); }
+                  }
+                `}} />
+                <div className="absolute inset-0 bg-radial-gradient from-purple-500/10 to-transparent animate-pulse" />
+                <div className="relative w-24 h-36 flex items-center justify-center">
+                  {[1, 2, 3, 4, 5].map((cardNum) => (
+                    <div
+                      key={cardNum}
+                      className="absolute w-20 h-32 rounded-lg bg-gradient-to-br from-purple-900 to-indigo-950 border border-purple-500/40 shadow-lg flex items-center justify-center transition-all duration-300"
+                      style={{
+                        animation: `mystical-shuffle ${0.6 + cardNum * 0.12}s infinite ease-in-out alternate`,
+                        zIndex: cardNum,
+                        opacity: 0.85,
+                      }}
+                    >
+                      <span className="text-xl text-purple-400/20">👁</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1.5 z-10">
+                  <span className="font-display text-xs text-amber-300 tracking-widest uppercase font-bold animate-pulse">
+                    Đang triệu hồi các Sứ Giả...
+                  </span>
+                  <p className="font-body text-[10px] text-white/40 italic">
+                    "Sương mù đang xáo trộn số mệnh, hãy giữ cõi lòng thanh tịnh."
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="glass rounded-2xl p-5 flex flex-col gap-4 text-center">
+                <span className="text-3xl animate-pulse">🔮</span>
               <div>
                 <h1 className="font-display text-base font-bold tracking-widest text-glow-gold">
                   BẮT ĐẦU TRẢI BÀI TAM TRỤ
@@ -610,6 +985,47 @@ export default function TraiBaiPage() {
               )}
 
               <form onSubmit={handleStartReading} className="flex flex-col gap-4 text-left">
+                {/* Spiritual Preset Questions */}
+                <div className="flex flex-col gap-2">
+                  <span className="font-display text-[9px] tracking-widest text-white/40 uppercase pl-1">
+                    Gợi ý nỗi niềm tâm linh
+                  </span>
+                  <div className="flex gap-2">
+                    {PRESET_CATEGORIES.map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
+                        className={`flex-1 py-1.5 rounded-lg border text-[10px] font-sans transition-all cursor-pointer ${
+                          activeCategory === cat.id
+                            ? "bg-purple-500/25 border-purple-500/40 text-purple-300"
+                            : "bg-white/2 border-white/5 text-white/45 hover:border-white/10"
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {activeCategory && (
+                    <div className="flex flex-col gap-1.5 p-2 bg-purple-950/20 border border-purple-500/10 rounded-xl animate-fade-in">
+                      {PRESET_CATEGORIES.find((c) => c.id === activeCategory)?.questions.map((q, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setQuestion(q);
+                            try { playCardSlide(); } catch (e) {}
+                          }}
+                          className="w-full text-left p-2 rounded-lg bg-black/40 hover:bg-white/5 border border-transparent hover:border-white/5 text-[11px] font-body text-white/70 italic transition-all cursor-pointer"
+                        >
+                          "{q}"
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex flex-col gap-1.5">
                   <label className="font-display text-[9px] tracking-widest text-white/40 uppercase pl-1">
                     Nỗi niềm của ngươi
@@ -624,36 +1040,33 @@ export default function TraiBaiPage() {
                   />
                 </div>
 
-                {/* Celestial Events Toggles */}
-                <div className="flex flex-col gap-2.5 border-t border-white/5 pt-3">
+                {/* Celestial Events (Auto-detected) */}
+                <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
                   <span className="font-display text-[9px] tracking-widest text-white/40 uppercase pl-1">
-                    Chu Kỳ Thiên Văn Kích Hoạt
+                    Chu Kỳ Thiên Văn Hiện Tại
                   </span>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { state: isFullMoon, set: setIsFullMoon, label: "🌕 Trăng Tròn" },
-                      { state: isNewMoon, set: setIsNewMoon, label: "🌑 Trăng Non" },
-                      {
-                        state: isMercuryRetrograde,
-                        set: setIsMercuryRetrograde,
-                        label: "🌀 Nghịch Hành",
-                      },
-                    ].map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => item.set(!item.state)}
-                        className="py-2.5 px-1 rounded-xl text-[10px] font-sans text-center transition-all border"
-                        style={{
-                          background: item.state ? "rgba(139,92,246,0.15)" : "rgba(255,255,255,0.02)",
-                          borderColor: item.state ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.06)",
-                          color: item.state ? "#c4b5fd" : "rgba(255,255,255,0.4)",
-                        }}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap gap-2">
+                    {isFullMoon && (
+                      <span className="py-1 px-3 rounded-full text-[10px] font-sans text-center border bg-amber-400/10 border-amber-400/30 text-amber-300">
+                        🌕 Đêm Trăng Tròn
+                      </span>
+                    )}
+                    {isNewMoon && (
+                      <span className="py-1 px-3 rounded-full text-[10px] font-sans text-center border bg-purple-500/10 border-purple-500/30 text-purple-300">
+                        🌑 Đêm Trăng Non
+                      </span>
+                    )}
+                    {isMercuryRetrograde && (
+                      <span className="py-1 px-3 rounded-full text-[10px] font-sans text-center border bg-rose-500/10 border-rose-500/30 text-rose-300 animate-pulse">
+                        🌀 Thủy Tinh Nghịch Hành
+                      </span>
+                    )}
+                    {!isFullMoon && !isNewMoon && !isMercuryRetrograde && (
+                      <span className="py-1 px-3 rounded-full text-[10px] font-sans text-center border bg-white/5 border-white/10 text-white/40">
+                        🌙 Trăng Khuyết (Bình Thường)
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -671,40 +1084,143 @@ export default function TraiBaiPage() {
                 </button>
               </form>
             </div>
+            )}
           </div>
         )}
 
-        {/* ── PHASE 2: DRAWING CEREMONY ───────────────────────────── */}
+        {phase === 'spread' && apiResponse && (
+          <div className="px-4 py-2 mt-4 flex flex-col gap-6 animate-fade-in text-center">
+            <div className="glass rounded-2xl p-5 flex flex-col gap-4 text-center">
+              <div>
+                <span className="font-display text-[9px] tracking-widest text-amber-300 uppercase font-bold">
+                  Nghi Thức Chọn Bài
+                </span>
+                <h1 className="font-display text-sm font-semibold tracking-widest text-white mt-1">
+                  HÃY CHỌN {apiResponse.cards.length} LÁ BÀI HỮU DUYÊN
+                </h1>
+                <p className="font-body text-[10px] text-white/40 italic mt-0.5">
+                  "Lướt qua các lá bài dưới đây, chạm để rút lá bài định mệnh của ngươi."
+                </p>
+              </div>
+
+              {/* Slots representing selected cards */}
+              <div className="flex justify-center gap-3 my-2">
+                {Array.from({ length: apiResponse.cards.length }).map((_, idx) => {
+                  const isFilled = selectedCardIndices.length > idx;
+                  return (
+                    <div
+                      key={idx}
+                      className={`w-14 h-20 rounded-lg flex flex-col items-center justify-center border transition-all duration-300 ${
+                        isFilled
+                          ? "border-purple-500/40 bg-purple-950/20 text-purple-300 shadow-[0_0_10px_rgba(139,92,246,0.15)] animate-scale-up"
+                          : "border-dashed border-white/10 bg-white/2 text-white/10"
+                      }`}
+                    >
+                      <span className="text-[8px] font-display tracking-widest mb-1 text-white/30">
+                        LÁ {idx + 1}
+                      </span>
+                      {isFilled ? (
+                        <span className="text-sm">👁</span>
+                      ) : (
+                        <span className="text-xs text-white/20">?</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* The 78-card horizontal scroll deck */}
+              <div className="relative w-full py-4 border-t border-b border-white/5 bg-black/20 rounded-xl overflow-x-auto scrollbar-none flex gap-2 px-6 snap-x">
+                {Array.from({ length: 78 }).map((_, idx) => {
+                  const isSelected = selectedCardIndices.includes(idx);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={isSelected || selectedCardIndices.length >= apiResponse.cards.length}
+                      onClick={() => {
+                        setSelectedCardIndices([...selectedCardIndices, idx]);
+                        try {
+                          playCardSlide();
+                          triggerHaptic(50);
+                        } catch (e) {}
+                      }}
+                      className={`relative w-14 h-24 rounded-lg flex-shrink-0 bg-gradient-to-b from-[#2d1065] to-[#0f0820] border transition-all duration-300 flex items-center justify-center text-purple-400/20 font-display text-xs hover:border-purple-400/50 cursor-pointer ${
+                        isSelected
+                          ? "opacity-20 scale-95 border-purple-900"
+                          : "border-purple-500/20 hover:scale-105"
+                      }`}
+                    >
+                      <span>👁</span>
+                      <div className="absolute top-1 left-1 text-[8px] text-white/10">
+                        {idx + 1}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next phase validation */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={resetReading}
+                  className="flex-1 py-3 rounded-xl border border-white/10 text-[10px] font-display tracking-widest text-white/50 hover:text-white transition-all cursor-pointer"
+                >
+                  Huỷ Trải Bài
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedCardIndices.length < apiResponse.cards.length}
+                  onClick={() => {
+                    setCurrentDialogue(apiResponse.greeting || "Sương mù cuộn lên... Hãy chạm để lật mở từng lá bài số mệnh.");
+                    setShowDialogue(true);
+                    setPhase('draw');
+                  }}
+                  className="flex-[2] py-3 rounded-xl font-display text-[10px] tracking-widest font-bold text-white transition-all text-center flex items-center justify-center bg-gradient-to-r from-purple-500/70 to-purple-600/80 border border-purple-500/40 shadow-[0_0_15px_rgba(139,92,246,0.2)] disabled:opacity-50 cursor-pointer"
+                >
+                  TIẾN VÀO GIẢI BÀI
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- PHASE 2: DRAWING CEREMONY ------------------------------------------- */}
         {phase === 'draw' && (
           <div className="flex flex-col gap-6 px-4 mt-2 animate-fade-in">
             {/* Cards Layout */}
             <div className="flex flex-col gap-5">
               {cards.map((card, i) => (
                 <div key={i} className="flex flex-col items-center">
-                  <PositionLabel label={positions[i]} />
+                  <PositionLabel label={getPositionName(i)} />
                   <div
-                    className="w-36 h-56 cursor-pointer relative"
+                    className="w-36 h-56 relative"
                     style={{
                       opacity: revealedCount >= i ? 1 : 0.35,
                       pointerEvents: revealedCount >= i ? "auto" : "none",
                     }}
-                    onClick={() => revealCard(i)}
                   >
                     <div className="w-full h-full rounded-xl overflow-hidden transition-all duration-500">
                       {card.revealed ? <CardFront card={card} /> : <CardBack />}
                     </div>
                     {!card.revealed && revealedCount >= i && (
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-sans text-white/30 animate-pulse pointer-events-none">
-                        Chạm để lật
-                      </span>
+                      <ScratchCard onReveal={() => revealCard(i)} />
                     )}
                   </div>
 
                   {/* Hiển thị nhanh tên lá và từ khóa ngay khi lật ở Phase 2 */}
                   {card.revealed && (
-                    <div className="mt-2.5 px-3 py-1.5 rounded-lg border border-purple-500/20 bg-purple-500/5 text-center max-w-[240px] animate-fade-in">
+                    <div className="mt-2.5 px-3 py-1.5 rounded-lg border border-purple-500/20 bg-purple-500/5 text-center max-w-[240px] animate-fade-in flex flex-col items-center gap-1">
                       <span className="font-display text-[10px] text-purple-300 font-bold block">
                         {card.name}
+                      </span>
+                      <span className={`text-[8px] font-sans px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${
+                        card.isReversed 
+                          ? "text-rose-300 bg-rose-950/40 border-rose-500/20" 
+                          : "text-amber-300 bg-amber-950/40 border-amber-500/20"
+                      }`}>
+                        {card.isReversed ? "🔄 Chiều Ngược" : "🌟 Chiều Xuôi"}
                       </span>
                       <span className="font-sans text-[8px] text-white/45 italic leading-tight block mt-0.5">
                         ({card.keywords.slice(0, 2).join(", ")})
@@ -788,7 +1304,7 @@ export default function TraiBaiPage() {
               <div className="flex justify-around items-end gap-2">
                 {cards.map((card, i) => (
                   <button key={card.id} onClick={() => setActiveCardIndex(i)} className="focus:outline-none">
-                    <SmallCard card={card} active={activeCardIndex === i} positionName={positions[i]} />
+                    <SmallCard card={card} active={activeCardIndex === i} positionName={getPositionName(i)} />
                   </button>
                 ))}
               </div>
@@ -799,7 +1315,7 @@ export default function TraiBaiPage() {
               <div className="flex flex-col gap-2">
                 <div className="rounded-xl p-4 border border-white/5 text-left bg-white/2">
                   <span className="font-display text-[9px] tracking-widest text-white/40 block mb-1">
-                    CHI TIẾT LÁ {positions[activeCardIndex]} ({activeCard.name})
+                    CHI TIẾT LÁ {getPositionName(activeCardIndex)} ({activeCard.name})
                   </span>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {activeCard.keywords.map((kw, idx) => (
@@ -920,12 +1436,20 @@ export default function TraiBaiPage() {
                   <div
                     className="rounded-xl p-4 text-left border animate-fade-in"
                     style={{
-                      background: "rgba(139, 92, 246, 0.05)",
-                      borderColor: "rgba(139, 92, 246, 0.2)",
+                      background: userErc >= 30
+                        ? "rgba(212, 168, 67, 0.06)"
+                        : userErc <= -30
+                        ? "rgba(239, 68, 68, 0.06)"
+                        : "rgba(139, 92, 246, 0.05)",
+                      borderColor: userErc >= 30
+                        ? "rgba(212, 168, 67, 0.25)"
+                        : userErc <= -30
+                        ? "rgba(239, 68, 68, 0.25)"
+                        : "rgba(139, 92, 246, 0.2)",
                     }}
                   >
-                    <span className="font-display text-[9px] text-purple-300 block mb-1">
-                      PHẢN HỒI CỦA VỌNG
+                    <span className="font-display text-[9px] block mb-1 font-bold" style={{ color: userErc >= 30 ? "#fcd34d" : userErc <= -30 ? "#f87171" : "#c084fc" }}>
+                      {isEclipse ? "PHẢN HỒI CỦA V̵O̵N̵G̵" : userErc >= 30 ? "PHẢN HỒI CỦA QUANG VỌNG 🌟" : userErc <= -30 ? "PHẢN HỒI CỦA HẮC VỌNG ⚔️" : "PHẢN HỒI CỦA VỌNG"}
                     </span>
                     <p className="font-body text-xs text-white/75 italic leading-relaxed">
                       "{choiceReply}"
@@ -977,6 +1501,43 @@ export default function TraiBaiPage() {
                       <span className="italic font-body">Thông điệp của ngươi đã tan vào sương khói cõi vô thường...</span>
                     </div>
                   )}
+
+                  {/* Khế ước sứ giả option */}
+                  {apiResponse.canInitiatePact && !pactAccepted && (
+                    <div
+                      className="rounded-xl p-4 flex flex-col gap-3 text-left border animate-fade-in mt-3"
+                      style={{
+                        background: "rgba(212, 168, 67, 0.04)",
+                        borderColor: "rgba(212, 168, 67, 0.25)",
+                      }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs">📜</span>
+                        <span className="font-display text-[9px] text-amber-300 tracking-widest uppercase font-bold">
+                          Khế Ước Định Mệnh của Sứ Giả
+                        </span>
+                      </div>
+                      <p className="font-body text-[10px] text-white/55 leading-relaxed italic">
+                        "Sứ Giả Hoàng Gia từ lá bài vừa lật muốn thiết lập một giao kèo định mệnh 3 ngày cùng ngươi để thử thách lòng tin cõi sương."
+                      </p>
+                      <button
+                        onClick={handleAcceptPact}
+                        disabled={acceptingPact}
+                        className="w-full py-3 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/35 text-[10px] font-display font-semibold tracking-widest text-amber-200 transition-all cursor-pointer"
+                      >
+                        {acceptingPact ? "Đang ký khế ước..." : "KÝ GIAO KÈO SỨ GIẢ"}
+                      </button>
+                    </div>
+                  )}
+
+                  {pactAccepted && (
+                    <div
+                      className="rounded-xl p-4 flex items-center gap-3 text-left text-xs text-amber-300 border animate-fade-in mt-3 bg-amber-500/5 border-amber-500/20"
+                    >
+                      <span>📜</span>
+                      <span className="italic font-body">Khế ước đã được ký kết. Sứ Giả đã di chuyển đến Cõi Giới của bạn...</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1015,6 +1576,50 @@ export default function TraiBaiPage() {
         )}
       </div>
 
+      {ercToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border bg-black/95 text-[11px] text-white/90 border-purple-500/40 shadow-[0_0_20px_rgba(139,92,246,0.3)] animate-slide-up">
+          <span className="text-sm">⚡</span>
+          <span>{ercToast.message}</span>
+        </div>
+      )}
+
+      {unlockedMemoryPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-5 animate-fade-in">
+          <div className="w-full max-w-sm rounded-2xl p-6 border text-center flex flex-col gap-4 text-white relative bg-[#0f1629] border-amber-500/40 shadow-[0_0_40px_rgba(212,168,67,0.25)]">
+            <span className="text-4xl animate-bounce text-amber-500">📖</span>
+            <div className="flex flex-col gap-1">
+              <span className="font-display text-[10px] tracking-[0.25em] text-amber-400 uppercase font-semibold">
+                MẢNH HỒI ỨC KHAI MỞ
+              </span>
+              <h2 className="font-display text-lg font-bold text-white tracking-wide">
+                Mảnh {unlockedMemoryPopup.index}: {unlockedMemoryPopup.title}
+              </h2>
+            </div>
+            <p className="font-body text-xs text-white/50 leading-relaxed italic">
+              "Một dòng hồi ức nữa của Vọng đã hiện hình trong sương mù. Hãy đến góc Hồi Ức để thấu suốt."
+            </p>
+            <div className="flex flex-col gap-2 mt-2">
+              <Link
+                href="/hoi-uc"
+                onClick={() => {
+                  stopSpeaking();
+                  setUnlockedMemoryPopup(null);
+                }}
+                className="w-full py-3 rounded-xl font-display text-xs tracking-widest font-semibold text-black bg-gradient-to-r from-amber-400 to-amber-500 hover:scale-[1.02] active:scale-95 transition-all text-center"
+              >
+                XEM HỒI ỨC NGAY
+              </Link>
+              <button
+                onClick={() => setUnlockedMemoryPopup(null)}
+                className="w-full py-3 rounded-xl border border-white/10 text-xs font-display tracking-widest text-white/50 hover:text-white transition-all"
+              >
+                Đóng lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Nav */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-50 safe-bottom"
@@ -1026,10 +1631,11 @@ export default function TraiBaiPage() {
       >
         <div className="flex items-center justify-around py-3 px-4">
           {[
-            { href: "/ban-do", icon: "🗺️", label: "Map" },
-            { href: "/chon-trai-bai", icon: "📖", label: "Bói", active: true },
-            { href: "/nhat-ky", icon: "📋", label: "Journal" },
-            { href: "/ho-so", icon: "👤", label: "Profile" },
+            { href: "/ban-do", icon: "🗺️", label: "Cõi Giới" },
+            { href: "/thanh-dia", icon: "🔥", label: "Thánh Địa" },
+            { href: "/chon-trai-bai", icon: "🔮", label: "Trải Bài", active: true },
+            { href: "/nhat-ky", icon: "📋", label: "Nhật Ký" },
+            { href: "/ho-so", icon: "👤", label: "Hồ Sơ" },
           ].map((item) => (
             <Link
               key={item.href}

@@ -40,6 +40,19 @@ export default function ChaoDonPage() {
         setUser(parsed);
         if (parsed.birthDate) {
           setBirthDateInput(parsed.birthDate.split("T")[0]);
+          // If birthDate is already set, check if they have any readings to skip ceremony
+          fetch("/api/user/readings?limit=1", {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.readings && data.readings.length > 0) {
+                router.replace("/ban-do");
+              }
+            })
+            .catch(err => console.error("Failed to fetch readings", err));
         }
       } catch (e) {
         console.error("Failed to parse user", e);

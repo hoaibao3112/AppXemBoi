@@ -40,11 +40,10 @@ export default function DangNhapPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      if (isLogin) {
-        router.push("/");
-      } else {
-        // First-time register: go to ceremony screen /chao-don
+      if (data.user && !data.user.birthDate) {
         router.push("/chao-don");
+      } else {
+        router.push("/ban-do");
       }
     } catch (err: any) {
       setError(err.message);

@@ -273,7 +273,7 @@ export default function ChonTraiBaiPage() {
 
       {/* Bottom Nav */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50"
+        className="fixed bottom-0 left-0 right-0 z-50 safe-bottom"
         style={{
           background: "rgba(8,11,20,0.95)",
           backdropFilter: "blur(20px)",
@@ -282,10 +282,11 @@ export default function ChonTraiBaiPage() {
       >
         <div className="flex items-center justify-around py-3 px-4">
           {[
-            { href: "/ban-do", icon: "🗺️", label: "Map" },
-            { href: "/chon-trai-bai", icon: "📖", label: "Bói", active: true },
-            { href: "/nhat-ky", icon: "📋", label: "Journal" },
-            { href: "/ho-so", icon: "👤", label: "Profile" },
+            { href: "/ban-do", icon: "🗺️", label: "Cõi Giới" },
+            { href: "/thanh-dia", icon: "🔥", label: "Thánh Địa" },
+            { href: "/chon-trai-bai", icon: "🔮", label: "Trải Bài", active: true },
+            { href: "/nhat-ky", icon: "📋", label: "Nhật Ký" },
+            { href: "/ho-so", icon: "👤", label: "Hồ Sơ" },
           ].map((item) => (
             <Link
               key={item.href}

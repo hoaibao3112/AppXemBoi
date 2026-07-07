@@ -3,12 +3,32 @@ import { prisma } from '@/lib/prisma';
 import { handleError } from '@/lib/errors';
 import { z } from 'zod';
 import { FATEFUL_PROMPTS } from '@/lib/narrative';
+import { isEclipseEvent } from '@/lib/lunar';
 
 const choiceSchema = z.object({
   readingId: z.string().uuid(),
   choiceId: z.enum(['A', 'B', 'C']),
   fatefulIndex: z.number().min(0).max(4).optional(),
 });
+
+function adjustReplyWithPersona(baseReply: string, erc: number): string {
+  if (erc >= 30) {
+    return baseReply + " Hãy cứ tin tưởng vào tiếng nói trong sương, ta sẽ luôn dẫn ngươi về phía ánh sáng.";
+  } else if (erc <= -30) {
+    return baseReply + " Nhưng đừng mong đợi lòng trắc ẩn từ cõi vô định này. Mọi khế ước đều có cái giá của nó.";
+  }
+  return baseReply;
+}
+
+function glitchText(text: string): string {
+  const chars = text.split("");
+  const glitchedChars = chars.map((char) => {
+    if (char === " " || Math.random() > 0.15) return char;
+    const glitchMarks = ["̵", "̶", "̷", "̴", "̙", "̞"];
+    return char + glitchMarks[Math.floor(Math.random() * glitchMarks.length)];
+  });
+  return "H̶ỗ̵n̵ ̸l̶o̶ạ̶n̵ ̶v̶ũ̶ ̵t̶r̶ụ̶: " + glitchedChars.join("");
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -65,6 +85,20 @@ export async function POST(req: NextRequest) {
         ercChange = 0;
         reply = 'Đứng giữa ngã rẽ luôn là khoảnh khắc đứng tim nhất. Đừng ép mình phải chọn ngay đêm nay. Hãy để câu chuyện này lắng xuống cùng sương đêm, ngày mai câu trả lời sẽ tự hiện rõ.';
       }
+    }
+
+    // Apply Eclipse doubling
+    const isEclipse = isEclipseEvent();
+    if (isEclipse) {
+      ercChange = ercChange * 2;
+    }
+
+    // Adjust reply with Vọng Persona
+    reply = adjustReplyWithPersona(reply, user.erc);
+
+    // Apply Eclipse glitch effect to text
+    if (isEclipse) {
+      reply = glitchText(reply);
     }
 
     // Calculate clamped ERC

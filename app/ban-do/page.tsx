@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { playCardRustle, playCardFlip, startFireCrackling, stopFireCrackling } from "@/lib/audio";
+import { playCardRustle, playCardFlip, startFireCrackling, stopFireCrackling, triggerHaptic } from "@/lib/audio";
 
 interface DiscoveredCard {
   cardId: string;
@@ -44,35 +44,27 @@ function InteractiveRelic({ clan, treasure }: { clan: string; treasure: string }
 
     if (clan === "DiemHoa") {
       startFireCrackling();
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
-      }
+      triggerHaptic([100, 50, 100]);
       setTimeout(() => {
         stopFireCrackling();
         setInteracting(false);
       }, 3000);
     } else if (clan === "ThuyNguyet") {
       playCardRustle();
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate([50, 50, 50]);
-      }
+      triggerHaptic([50, 50, 50]);
       setTimeout(() => {
         setInteracting(false);
       }, 1500);
     } else if (clan === "PhongKiem") {
       playCardRustle();
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate(30);
-      }
+      triggerHaptic(30);
       setTimeout(() => {
         setInteracting(false);
       }, 800);
     } else if (clan === "ThoKim") {
       playCardFlip();
       setGrowStage((prev) => (prev + 1) % 4);
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate(60);
-      }
+      triggerHaptic(60);
       setTimeout(() => {
         setInteracting(false);
       }, 1000);
@@ -152,6 +144,9 @@ export default function BanDoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeRegion, setActiveRegion] = useState<string | null>(null);
+  const [activePact, setActivePact] = useState<any>(null);
+  const [claimingPact, setClaimingPact] = useState(false);
+  const [showPactModal, setShowPactModal] = useState(false);
 
   useEffect(() => {
     const fetchMapData = async () => {
@@ -172,6 +167,17 @@ export default function BanDoPage() {
         if (!res.ok) throw new Error(data.error || "Không thể tải bản đồ hành trình.");
 
         setRegions(data.regions);
+
+        // Fetch active pact
+        const pactRes = await fetch("/api/user/pact", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const pactData = await pactRes.json();
+        if (pactRes.ok && pactData.activePact) {
+          setActivePact(pactData.activePact);
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -181,6 +187,44 @@ export default function BanDoPage() {
 
     fetchMapData();
   }, [router]);
+
+  const handleClaimPact = async () => {
+    if (claimingPact || !activePact) return;
+    setClaimingPact(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/user/pact", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không thể nghiệm thu khế ước.");
+
+      // Update cached user profile
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          parsed.activePactCardId = null;
+          parsed.activePactTarget = null;
+          parsed.activePactExpiresAt = null;
+          parsed.unlockedShards = data.unlockedShards;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        } catch (e) {}
+      }
+
+      setActivePact(null);
+      setShowPactModal(false);
+      
+      alert(`Khế ước hoàn tất! Ngươi nhận được Mảnh Gương Vỡ #${data.newShard}`);
+    } catch (e: any) {
+      alert(e.message || "Bạn chưa hoàn thành mục tiêu khế ước này.");
+    } finally {
+      setClaimingPact(false);
+    }
+  };
 
   const getClanColor = (clanName: string) => {
     const map: Record<string, string> = {
@@ -412,6 +456,65 @@ export default function BanDoPage() {
         </div>
       </div>
 
+      {/* Floating Messenger Pact Scroll */}
+      {activePact && (
+        <button
+          onClick={() => setShowPactModal(true)}
+          className="fixed top-20 right-4 z-40 w-12 h-12 rounded-full flex items-center justify-center border border-amber-500/30 bg-amber-500/10 shadow-[0_0_15px_rgba(212,168,67,0.3)] animate-bounce cursor-pointer text-lg animate-pulse"
+        >
+          📜
+        </button>
+      )}
+
+      {showPactModal && activePact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-5 animate-fade-in text-white">
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 border text-left flex flex-col gap-4 relative bg-[#0f1629] border-amber-500/30 shadow-[0_0_30px_rgba(212,168,67,0.25)]"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-display text-[9px] tracking-widest text-amber-400 uppercase font-bold">
+                Khế Ước Đang Thực Hiện
+              </span>
+              <button onClick={() => setShowPactModal(false)} className="text-white/40 hover:text-white text-xs">
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-xl p-4 bg-white/5 border border-white/5 flex flex-col gap-2">
+              <span className="font-display text-[10px] text-white/50">YÊU CẦU KHẾ ƯỚC</span>
+              <p className="font-body text-xs text-white/80 leading-relaxed italic">
+                {activePact.target === "NO_NEGATIVE_ERC"
+                  ? "Giữ cõi lòng không hoài nghi. Chỉ số Cộng hưởng (ERC) không được giảm xuống dưới 0."
+                  : activePact.target === "REACH_ERC_30"
+                  ? "Tích lũy lòng thiện lành. Đưa chỉ số Cộng hưởng (ERC) vượt mốc 30+."
+                  : "Hoàn thành thử thách cõi sương."}
+              </p>
+              
+              <div className="h-px bg-white/5 my-1" />
+              <span className="text-[10px] text-white/35 font-sans">
+                Hạn chót khế ước: {new Date(activePact.expiresAt).toLocaleDateString("vi-VN")}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2 mt-2">
+              <button
+                onClick={handleClaimPact}
+                disabled={claimingPact}
+                className="w-full py-3.5 rounded-xl font-display text-xs tracking-widest font-bold text-white transition-all text-center flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-amber-500/70 to-amber-600/80 border border-amber-500/40 shadow-[0_0_15px_rgba(212,168,67,0.2)] disabled:opacity-50"
+              >
+                {claimingPact ? "Đang nghiệm thu..." : "NGHIỆM THU KHẾ ƯỚC"}
+              </button>
+              <button
+                onClick={() => setShowPactModal(false)}
+                className="w-full py-3 rounded-xl border border-white/10 text-xs font-display tracking-widest text-white/50 hover:text-white transition-all cursor-pointer"
+              >
+                Quay lại Bản Đồ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Nav */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-50 safe-bottom"
@@ -423,10 +526,11 @@ export default function BanDoPage() {
       >
         <div className="flex items-center justify-around py-3 px-4">
           {[
-            { href: "/ban-do", icon: "🗺️", label: "Map", active: true },
-            { href: "/chon-trai-bai", icon: "📖", label: "Bói" },
-            { href: "/nhat-ky", icon: "📋", label: "Journal" },
-            { href: "/ho-so", icon: "👤", label: "Profile" },
+            { href: "/ban-do", icon: "🗺️", label: "Cõi Giới", active: true },
+            { href: "/thanh-dia", icon: "🔥", label: "Thánh Địa" },
+            { href: "/chon-trai-bai", icon: "🔮", label: "Trải Bài" },
+            { href: "/nhat-ky", icon: "📋", label: "Nhật Ký" },
+            { href: "/ho-so", icon: "👤", label: "Hồ Sơ" },
           ].map((item) => (
             <Link
               key={item.href}

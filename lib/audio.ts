@@ -5,6 +5,29 @@ let crackleInterval: NodeJS.Timeout | null = null;
 let fireGain: GainNode | null = null;
 let ambientSource_fire: AudioBufferSourceNode | null = null;
 
+export function getVolume(key: string, defaultVal: number): number {
+  if (typeof window === 'undefined') return defaultVal / 100;
+  const val = localStorage.getItem(`settings_${key}`);
+  return val !== null ? Number(val) / 100 : defaultVal / 100;
+}
+
+export function isHapticEnabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  const val = localStorage.getItem("settings_hapticEnabled");
+  return val !== null ? val === "true" : true;
+}
+
+export function triggerHaptic(pattern: number | number[]) {
+  if (typeof window === 'undefined' || !isHapticEnabled()) return;
+  try {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(pattern);
+    }
+  } catch (e) {
+    console.warn("Haptic feedback error:", e);
+  }
+}
+
 function getAudioContext() {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
@@ -42,7 +65,8 @@ export function playCardRustle() {
   filter.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.3);
 
   const gainNode = ctx.createGain();
-  gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
+  const vol = getVolume("soundVolume", 45);
+  gainNode.gain.setValueAtTime(0.08 * vol, ctx.currentTime);
   gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
 
   noise.connect(filter);
@@ -71,11 +95,12 @@ export function playCardFlip() {
   tickOsc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.02);
 
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.3, ctx.currentTime);
+  const vol = getVolume("soundVolume", 45);
+  gain.gain.setValueAtTime(0.3 * vol, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
 
   const tickGain = ctx.createGain();
-  tickGain.gain.setValueAtTime(0.12, ctx.currentTime);
+  tickGain.gain.setValueAtTime(0.12 * vol, ctx.currentTime);
   tickGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.02);
 
   const lowpass = ctx.createBiquadFilter();
@@ -104,7 +129,8 @@ export function startFireCrackling() {
   if (crackleInterval) return;
 
   fireGain = ctx.createGain();
-  fireGain.gain.setValueAtTime(0.08, ctx.currentTime);
+  const vol = getVolume("soundVolume", 45);
+  fireGain.gain.setValueAtTime(0.08 * vol, ctx.currentTime);
   fireGain.connect(ctx.destination);
 
   // A soft continuous hiss
@@ -173,7 +199,7 @@ export function stopFireCrackling() {
 }
 
 // 4. Nhạc nền Ambient Pad (Gothic / Mystic Drone)
-export function startAmbientPad() {
+export function startAmbientPad(clan?: string) {
   const ctx = getAudioContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume();
@@ -183,20 +209,43 @@ export function startAmbientPad() {
   const gainNode = ctx.createGain();
   gainNode.gain.setValueAtTime(0, ctx.currentTime);
   // Fade in ambient pad slowly
-  gainNode.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 2.0);
+  const vol = getVolume("ambientVolume", 65);
+  gainNode.gain.linearRampToValueAtTime(0.06 * vol, ctx.currentTime + 2.0);
+
+  let notes = [110.0, 164.81, 220.0, 261.63]; // Default (VoThuong)
+  let oscType: 'sine' | 'triangle' | 'sawtooth' | 'square' = 'sawtooth';
+  let filterCutoff = 400;
+
+  if (clan === 'DiemHoa') {
+    notes = [130.81, 196.00, 261.63, 329.63, 493.88]; // C3 Major 7th
+    oscType = 'sawtooth';
+    filterCutoff = 500;
+  } else if (clan === 'ThuyNguyet') {
+    notes = [87.31, 130.81, 174.61, 220.00, 261.63]; // F2 Major
+    oscType = 'triangle';
+    filterCutoff = 350;
+  } else if (clan === 'PhongKiem') {
+    notes = [164.81, 246.94, 329.63, 415.30, 493.88]; // E3 Major
+    oscType = 'sine';
+    filterCutoff = 600;
+  } else if (clan === 'ThoKim') {
+    notes = [55.00, 82.41, 110.00, 130.81]; // A1 Minor
+    oscType = 'triangle';
+    filterCutoff = 250;
+  }
 
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(400, ctx.currentTime);
+  filter.frequency.setValueAtTime(filterCutoff, ctx.currentTime);
 
-  // Play a mystical A minor / C major detuned drone chord (A2, E3, A3, C4)
-  const notes = [110.0, 164.81, 220.0, 261.63];
   notes.forEach((freq) => {
     // Detuned double oscillators for chorus effect
     for (let i = 0; i < 2; i++) {
       const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq + (i === 0 ? 0.4 : -0.4), ctx.currentTime);
+      osc.type = oscType;
+      // wider detuning for DiemHoa (heat)
+      const detuneAmt = clan === 'DiemHoa' ? 0.8 : 0.4;
+      osc.frequency.setValueAtTime(freq + (i === 0 ? detuneAmt : -detuneAmt), ctx.currentTime);
       
       osc.connect(filter);
       oscs.push(osc);
@@ -204,13 +253,60 @@ export function startAmbientPad() {
     }
   });
 
+  // PhongKiem: Add white noise wind simulation
+  if (clan === 'PhongKiem') {
+    try {
+      const bufferSize = ctx.sampleRate * 2.0;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const windSource = ctx.createBufferSource();
+      windSource.buffer = buffer;
+      windSource.loop = true;
+
+      const windFilter = ctx.createBiquadFilter();
+      windFilter.type = 'bandpass';
+      windFilter.frequency.setValueAtTime(800, ctx.currentTime);
+      windFilter.Q.setValueAtTime(3.0, ctx.currentTime);
+
+      const windLfo = ctx.createOscillator();
+      windLfo.type = 'sine';
+      windLfo.frequency.setValueAtTime(0.1, ctx.currentTime);
+      const windLfoGain = ctx.createGain();
+      windLfoGain.gain.setValueAtTime(300, ctx.currentTime);
+
+      windLfo.connect(windLfoGain);
+      windLfoGain.connect(windFilter.frequency);
+      windLfo.start();
+
+      const windGain = ctx.createGain();
+      windGain.gain.setValueAtTime(0.015 * vol, ctx.currentTime);
+
+      windSource.connect(windFilter);
+      windFilter.connect(windGain);
+      windGain.connect(ctx.destination);
+      windSource.start();
+
+      oscs.push(windLfo as any);
+      oscs.push(windSource as any);
+    } catch (e) {
+      console.warn("Wind synth failed:", e);
+    }
+  }
+
   // Slow LFO modulating filter cutoff to make it alive
   const lfo = ctx.createOscillator();
   lfo.type = 'sine';
-  lfo.frequency.setValueAtTime(0.15, ctx.currentTime); // 0.15 Hz (very slow)
+  // slower modulation for ThuyNguyet (waves)
+  const lfoFreq = clan === 'ThuyNguyet' ? 0.08 : 0.15;
+  lfo.frequency.setValueAtTime(lfoFreq, ctx.currentTime);
   
   const lfoGain = ctx.createGain();
-  lfoGain.gain.setValueAtTime(150, ctx.currentTime); // swing 150hz up/down
+  // more filter sweep for ThuyNguyet (waves effect)
+  const sweepAmt = clan === 'ThuyNguyet' ? 220 : 150;
+  lfoGain.gain.setValueAtTime(sweepAmt, ctx.currentTime);
 
   lfo.connect(lfoGain);
   lfoGain.connect(filter.frequency);
@@ -243,4 +339,53 @@ export function stopAmbientPad() {
   }, 1600);
   
   ambientSource = null;
+}
+
+export function updateAmbientVolume(volPercent: number) {
+  const ctx = getAudioContext();
+  if (ambientSource && ctx) {
+    ambientSource.gainNode.gain.setValueAtTime(0.06 * (volPercent / 100), ctx.currentTime);
+  }
+}
+
+export function updateFireVolume(volPercent: number) {
+  const ctx = getAudioContext();
+  if (fireGain && ctx) {
+    fireGain.gain.setValueAtTime(0.08 * (volPercent / 100), ctx.currentTime);
+  }
+}
+
+// 5. Tiếng lướt bài đều đặn khi rải (White noise sweep)
+export function playCardSlide() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const bufferSize = ctx.sampleRate * 0.15;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(600, ctx.currentTime);
+  filter.Q.setValueAtTime(1.0, ctx.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.12);
+
+  const gainNode = ctx.createGain();
+  const vol = getVolume("soundVolume", 45);
+  gainNode.gain.setValueAtTime(0.04 * vol, ctx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+  noise.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  noise.start();
 }

@@ -442,10 +442,11 @@ export default function NhatKyPage() {
       >
         <div className="flex items-center justify-around py-3 px-4">
           {[
-            { href: "/", icon: "🗺️", label: "Map" },
-            { href: "/chon-trai-bai", icon: "📖", label: "Bói" },
-            { href: "/nhat-ky", icon: "📋", label: "Journal", active: true },
-            { href: "/cai-dat", icon: "⚙️", label: "Cài đặt" },
+            { href: "/ban-do", icon: "🗺️", label: "Cõi Giới" },
+            { href: "/thanh-dia", icon: "🔥", label: "Thánh Địa" },
+            { href: "/chon-trai-bai", icon: "🔮", label: "Trải Bài" },
+            { href: "/nhat-ky", icon: "📋", label: "Nhật Ký", active: true },
+            { href: "/ho-so", icon: "👤", label: "Hồ Sơ" },
           ].map((item) => (
             <Link
               key={item.href}

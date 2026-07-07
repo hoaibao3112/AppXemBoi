@@ -11,6 +11,7 @@ import { isRateLimited } from '@/lib/redis';
 
 const readingSchema = z.object({
   question: z.string().min(5),
+  currentHour: z.number().int().min(0).max(23).optional(),
   celestialEvents: z.object({
     isFullMoon: z.boolean().optional(),
     isNewMoon: z.boolean().optional(),
@@ -73,7 +74,8 @@ export async function POST(req: NextRequest) {
     const greetingObj = await getNarrativeGreeting(
       updatedUser,
       data.celestialEvents || {},
-      newlyUnlocked.length > 0 ? newlyUnlocked[0] : null
+      newlyUnlocked.length > 0 ? newlyUnlocked[0] : null,
+      data.currentHour
     );
     const greeting = greetingObj.greeting;
 
@@ -182,6 +184,26 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    // Check if user drawn royal cards to trigger active pact option
+    const royalCard = cardsDrawn.find(d => ['Page', 'Knight', 'Queen', 'King'].includes(d.card.rank));
+    const canInitiatePact = !!royalCard;
+    const pactCardId = royalCard ? royalCard.card.id : null;
+
+    // Check if a mirror shard is randomly awarded (20% chance)
+    let shardAwarded: number | null = null;
+    if (Math.random() < 0.20) {
+      const existingShards = updatedUser.unlockedShards || [];
+      const missingShards = [1, 2, 3, 4, 5, 6].filter(s => !existingShards.includes(s));
+      if (missingShards.length > 0) {
+        shardAwarded = missingShards[Math.floor(Math.random() * missingShards.length)];
+        const nextShards = [...existingShards, shardAwarded];
+        await prisma.user.update({
+          where: { id: updatedUser.id },
+          data: { unlockedShards: nextShards }
+        });
+      }
+    }
+
     return NextResponse.json({
       readingId: reading.id,
       greeting,
@@ -202,6 +224,9 @@ export async function POST(req: NextRequest) {
       isAiGenerated,
       newlyUnlockedMemories: newlyUnlocked,
       fatefulIndex,
+      canInitiatePact,
+      pactCardId,
+      shardAwarded,
     });
   } catch (error) {
     return handleError(error);

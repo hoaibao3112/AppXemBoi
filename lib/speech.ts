@@ -29,8 +29,27 @@ export function speakText(text: string) {
       (window as any)._globalAudio = audio;
     }
 
-    // 3. Nạp đường dẫn API và phát âm (Mặc định dùng giọng nam 'male' cho nhân vật Vọng)
-    audio.src = `/api/tarot/tts?text=${encodeURIComponent(text)}&voice=male`;
+    // 3. Nạp đường dẫn API và phát âm dựa theo cấu hình cài đặt
+    let voice = typeof window !== 'undefined' ? (localStorage.getItem("settings_vongVoice") || "male") : "male";
+    const speed = typeof window !== 'undefined' ? Number(localStorage.getItem("settings_vongSpeed") || "1.0") : 1.0;
+
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          const erc = parsed.erc || 0;
+          if (erc >= 30) {
+            voice = "female";
+          } else if (erc <= -30) {
+            voice = "male";
+          }
+        } catch (e) {}
+      }
+    }
+
+    audio.src = `/api/tarot/tts?text=${encodeURIComponent(text)}&voice=${voice}`;
+    audio.playbackRate = speed;
     
     const playPromise = audio.play();
     if (playPromise !== undefined) {
@@ -79,7 +98,8 @@ function speakFallback(text: string) {
   try {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "vi-VN";
-    utterance.rate = 0.85;
+    const speed = typeof window !== 'undefined' ? Number(localStorage.getItem("settings_vongSpeed") || "1.0") : 1.0;
+    utterance.rate = speed * 0.85; // Scale speed slightly for speech synthesis default speed
     utterance.pitch = 0.85;
 
     // Tìm giọng đọc tiếng Việt nếu có sẵn

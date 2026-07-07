@@ -311,7 +311,8 @@ export function getDynamicOutroBridge(clan: string, erc: number): string {
 export async function getNarrativeGreeting(
   user: { clan: string; erc: number },
   celestialEvents: { isFullMoon?: boolean; isNewMoon?: boolean; isMercuryRetrograde?: boolean } = {},
-  newlyUnlockedMemory: number | null = null
+  newlyUnlockedMemory: number | null = null,
+  currentHour?: number
 ): Promise<{ greeting: string; isMemory: boolean; memoryIndex?: number }> {
   
   if (newlyUnlockedMemory !== null) {
@@ -359,7 +360,7 @@ export async function getNarrativeGreeting(
     return { greeting, isMemory: false };
   }
 
-  const hour = new Date().getHours();
+  const hour = currentHour ?? new Date().getHours();
   let timeKey: keyof typeof TIME_GREETINGS = 'Day';
 
   if (hour >= 5 && hour < 8) {

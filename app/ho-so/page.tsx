@@ -25,10 +25,11 @@ function ERCMeter({ value = 0 }: { value?: number }) {
   const isPositive = value >= 0;
 
   const getStatusText = (val: number) => {
-    if (val > 50) return "Gắn Kết";
-    if (val >= 0) return "Ấm Áp";
-    if (val > -50) return "Lạnh Lẽo";
-    return "Độc Lập";
+    if (val >= 50) return "Trái Tim Hướng Sáng 🌟";
+    if (val >= 30) return "Tin Tưởng Vào Duyên Số";
+    if (val >= -29) return "Cân Bằng Giữa Hai Cõi";
+    if (val >= -49) return "Hành Giả Cô Độc";
+    return "Kiếm Lạnh Trời Đêm ⚔️";
   };
 
   return (
@@ -118,6 +119,103 @@ function ERCMeter({ value = 0 }: { value?: number }) {
           <span className="font-sans text-[8px] text-white/25">0</span>
           <span className="font-sans text-[8px] text-white/25">+100</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ERC Constellation Chart ──────────────────────────────────────────────────
+function ERCConstellationChart({ ercs }: { ercs: number[] }) {
+  if (ercs.length === 0) return null;
+  const points = ercs.length === 1 ? [0, ...ercs] : ercs;
+
+  const width = 350;
+  const height = 120;
+  const padding = 15;
+
+  const maxVal = 100;
+  const minVal = -100;
+
+  const svgPoints = points.map((val, idx) => {
+    const x = padding + (idx / (points.length - 1)) * (width - 2 * padding);
+    const normalizedVal = (val - minVal) / (maxVal - minVal);
+    const y = height - padding - normalizedVal * (height - 2 * padding);
+    return { x, y, val };
+  });
+
+  const pathD = svgPoints.reduce((acc, p, idx) => {
+    return acc + `${idx === 0 ? "M" : "L"} ${p.x} ${p.y} `;
+  }, "");
+
+  const latestVal = points[points.length - 1];
+  const lineColor = latestVal >= 0 ? "#a78bfa" : "#f87171";
+
+  return (
+    <div
+      className="rounded-2xl p-5"
+      style={{
+        background: "rgba(15, 22, 41, 0.7)",
+        border: "1px solid rgba(255,255,255,0.07)",
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-display text-xs text-white/60 tracking-wide">
+          Chòm Sao Tâm Tư (Biến Thiên ERC)
+        </span>
+        <span className="text-[10px] font-sans text-white/30 italic">
+          Khảm qua {points.length - 1} kỳ ngã rẽ
+        </span>
+      </div>
+
+      <div className="relative w-full h-[120px] bg-black/20 rounded-xl overflow-hidden border border-white/5 flex items-center justify-center">
+        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+          {/* Grid lines */}
+          <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
+          
+          {/* Main SVG path with glowing drop shadow */}
+          {points.length > 1 && (
+            <path
+              d={pathD}
+              fill="none"
+              stroke={lineColor}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                filter: `drop-shadow(0 0 6px ${lineColor})`,
+              }}
+            />
+          )}
+
+          {/* Glowing node circles */}
+          {svgPoints.map((p, idx) => (
+            <g key={idx}>
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r="4"
+                fill="#ffffff"
+                stroke={lineColor}
+                strokeWidth="1.5"
+                style={{
+                  filter: `drop-shadow(0 0 4px ${lineColor})`,
+                }}
+              />
+              {(idx === 0 || idx === svgPoints.length - 1) && (
+                <text
+                  x={p.x}
+                  y={p.y - 8}
+                  fill="rgba(255,255,255,0.6)"
+                  fontSize="7"
+                  fontFamily="sans-serif"
+                  textAnchor="middle"
+                >
+                  {p.val > 0 ? "+" : ""}{p.val}
+                </text>
+              )}
+            </g>
+          ))}
+        </svg>
       </div>
     </div>
   );
@@ -302,6 +400,7 @@ function TribeHero({ name, clan }: { name: string | null; clan: string }) {
 export default function HoSoPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [recentErcs, setRecentErcs] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -324,6 +423,25 @@ export default function HoSoPage() {
         if (!res.ok) throw new Error(data.error || "Không thể tải hồ sơ người dùng.");
 
         setProfile(data);
+
+        // Fetch recent readings to map ERC chart
+        const readingsRes = await fetch("/api/user/readings?limit=10", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const readingsData = await readingsRes.json();
+        if (readingsRes.ok && readingsData.readings) {
+          const sortedReadings = [...readingsData.readings].reverse();
+          let currentErcVal = 0;
+          const ercsList = [0];
+          for (const reading of sortedReadings) {
+            currentErcVal += reading.ercChange || 0;
+            currentErcVal = Math.max(-100, Math.min(100, currentErcVal));
+            ercsList.push(currentErcVal);
+          }
+          setRecentErcs(ercsList);
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -382,12 +500,13 @@ export default function HoSoPage() {
                 backgroundClip: "text",
               }}
             >
-              V
+              👁
             </span>
             <span className="font-display text-xs text-white/50 tracking-widest">
-              CÕI VÔ THỊ
+              CÕI VÔ THƯỜNG
             </span>
           </div>
+
           <button
             onClick={() => {
               localStorage.removeItem("token");
@@ -404,6 +523,7 @@ export default function HoSoPage() {
         <div className="flex flex-col gap-5 px-4">
           <TribeHero name={profile.name} clan={profile.clan} />
           <ERCMeter value={profile.erc} />
+          <ERCConstellationChart ercs={recentErcs} />
           <BirthCard soulCardId={profile.soulCard} />
 
           {/* Stats Summary */}
@@ -418,6 +538,50 @@ export default function HoSoPage() {
             </div>
           </div>
 
+          {/* Secret 79th Card Reward */}
+          {profile.unlockedMemories.length === 7 && (
+            <div
+              className="rounded-2xl p-5 border border-amber-500/30 flex flex-col items-center gap-4 relative overflow-hidden bg-gradient-to-b from-[#110e20] to-[#0d071a] shadow-[0_0_25px_rgba(212,168,67,0.25)]"
+              style={{
+                background: "rgba(17, 14, 32, 0.7)",
+              }}
+            >
+              <span className="font-display text-[9px] tracking-[0.2em] text-amber-400 font-bold uppercase">
+                Giải Mã Thành Công Cõi Sương
+              </span>
+              <div
+                className="w-32 h-48 rounded-xl flex flex-col justify-between p-3 relative overflow-hidden border"
+                style={{
+                  background: "linear-gradient(160deg, #110825 0%, #31135c 50%, #0d071a 100%)",
+                  borderColor: "rgba(212,168,67,0.6)",
+                  boxShadow: "0 0 25px rgba(212,168,67,0.45)",
+                }}
+              >
+                <span className="font-display text-[6px] text-amber-300/60 tracking-widest self-start uppercase">
+                  Lá Bài Ẩn Thứ 79
+                </span>
+                
+                <div className="flex items-center justify-center text-4xl animate-pulse">
+                  🔮
+                </div>
+
+                <div className="flex flex-col items-center gap-0.5 w-full">
+                  <div className="w-full h-px bg-amber-500/30" />
+                  <span className="font-display text-[9px] text-amber-300 font-bold tracking-wide mt-1 text-center">
+                    SỨ GIẢ VÔ THƯỜNG
+                  </span>
+                  <span className="font-sans text-[6px] text-white/30 italic">(The Void Gate)</span>
+                </div>
+                
+                {/* Rainbow sparkle animation overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-yellow-500/5 via-green-500/5 via-blue-500/5 to-purple-500/5 opacity-50 animate-pulse pointer-events-none" />
+              </div>
+              <p className="font-body text-xs text-white/60 leading-relaxed italic text-center">
+                "Hành trình vạn dặm đã trọn vẹn, Vọng trao cho ngươi lá bài thứ 79 đại diện cho sự vô hạn của Cõi Vô Thường."
+              </p>
+            </div>
+          )}
+
           {/* Action Links */}
           <div className="flex flex-col gap-2">
             <Link
@@ -428,7 +592,14 @@ export default function HoSoPage() {
                 <span className="text-base">🔮</span>
                 <span className="font-display text-xs text-white/80 tracking-wider">Thư viện Hồi Ức Vọng</span>
               </div>
-              <span className="text-purple-400 text-xs font-semibold">→</span>
+              <div className="flex items-center gap-2">
+                {profile.unlockedMemories.length > 0 && (
+                  <span className="text-[9px] font-sans px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    {profile.unlockedMemories.length}/7 mảnh
+                  </span>
+                )}
+                <span className="text-purple-400 text-xs font-semibold">→</span>
+              </div>
             </Link>
 
             <Link
@@ -456,10 +627,11 @@ export default function HoSoPage() {
       >
         <div className="flex items-center justify-around py-3 px-4">
           {[
-            { href: "/", icon: "🗺️", label: "Map" },
-            { href: "/chon-trai-bai", icon: "📖", label: "Bói" },
-            { href: "/nhat-ky", icon: "📋", label: "Journal" },
-            { href: "/ho-so", icon: "👤", label: "Profile", active: true },
+            { href: "/ban-do", icon: "🗺️", label: "Cõi Giới" },
+            { href: "/thanh-dia", icon: "🔥", label: "Thánh Địa" },
+            { href: "/chon-trai-bai", icon: "🔮", label: "Trải Bài" },
+            { href: "/nhat-ky", icon: "📋", label: "Nhật Ký" },
+            { href: "/ho-so", icon: "👤", label: "Hồ Sơ", active: true },
           ].map((item) => (
             <Link
               key={item.href}

@@ -9,6 +9,10 @@ const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 const PROTECTED_PATHS = ['/api/tarot', '/api/user'];
 
 export async function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname === '/api/tarot/tts') {
+    return NextResponse.next();
+  }
+
   const isProtected = PROTECTED_PATHS.some(p => req.nextUrl.pathname.startsWith(p));
   if (!isProtected) return NextResponse.next();
 

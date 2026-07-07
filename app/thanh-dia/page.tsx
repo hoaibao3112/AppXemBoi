@@ -245,7 +245,7 @@ export default function NghiThucDotLaPage() {
             {/* Igniter Button */}
             <div className="relative flex items-center justify-center w-52 h-52 my-4">
               {/* Radial charging path */}
-              <svg className="absolute w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <svg className="absolute w-full h-full transform -rotate-90 pointer-events-none" viewBox="0 0 100 100">
                 <circle
                   cx="50"
                   cy="50"

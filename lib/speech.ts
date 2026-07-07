@@ -7,6 +7,10 @@
 export function speakText(text: string) {
   if (typeof window === "undefined") return;
 
+  // Tăng sequence ID để đánh dấu lượt phát mới
+  const currentSeqId = ((window as any)._speechSeqId || 0) + 1;
+  (window as any)._speechSeqId = currentSeqId;
+
   try {
     // 1. Hủy bất kỳ giọng đọc SpeechSynthesis hoặc Audio đang phát
     if (window.speechSynthesis) {
@@ -30,14 +34,22 @@ export function speakText(text: string) {
     
     const playPromise = audio.play();
     if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        console.warn("Audio play failed, falling back to Web Speech API:", err);
-        speakFallback(text);
+      playPromise.catch((err: any) => {
+        // Nếu chỉ là lỗi ngắt do lượt phát mới đè lên (AbortError), không cần chạy fallback
+        if (err.name === "AbortError") return;
+        
+        // Chỉ chạy fallback nếu đây vẫn là lượt phát mới nhất
+        if ((window as any)._speechSeqId === currentSeqId) {
+          console.warn("Audio play failed, falling back to Web Speech API:", err);
+          speakFallback(text);
+        }
       });
     }
   } catch (error) {
     console.error("speakText failed:", error);
-    speakFallback(text);
+    if ((window as any)._speechSeqId === currentSeqId) {
+      speakFallback(text);
+    }
   }
 }
 
@@ -46,6 +58,9 @@ export function speakText(text: string) {
  */
 export function stopSpeaking() {
   if (typeof window === "undefined") return;
+
+  // Hủy sequence ID cũ để không cho phép bất kỳ callback nào kích hoạt fallback nữa
+  (window as any)._speechSeqId = ((window as any)._speechSeqId || 0) + 1;
 
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();

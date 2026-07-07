@@ -54,23 +54,7 @@ export default function NghiThucDotLaPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Global release listener to make press-and-hold reliable on trackpads/mice
-  useEffect(() => {
-    if (holding) {
-      const handleGlobalRelease = () => {
-        stopHolding();
-      };
-      window.addEventListener("mouseup", handleGlobalRelease);
-      window.addEventListener("touchend", handleGlobalRelease);
-      return () => {
-        window.removeEventListener("mouseup", handleGlobalRelease);
-        window.removeEventListener("touchend", handleGlobalRelease);
-      };
-    }
-  }, [holding]);
-
-  const startHolding = (e?: React.MouseEvent | React.TouchEvent) => {
-    if (e) e.preventDefault();
+  const startCharging = () => {
     if (isBurned || loading) return;
     setHolding(true);
     setError("");
@@ -84,7 +68,6 @@ export default function NghiThucDotLaPage() {
       navigator.vibrate(100);
     }
 
-    // Set interval to increment progress over 3 seconds (3000ms)
     const startTime = Date.now();
     progressIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -105,10 +88,20 @@ export default function NghiThucDotLaPage() {
     }, 50);
   };
 
-  const stopHolding = () => {
+  const stopCharging = () => {
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     stopFireCrackling();
     setHolding(false);
+    setProgress(0);
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (holding) {
+      stopCharging();
+    } else {
+      startCharging();
+    }
   };
 
   const triggerRitual = async () => {
@@ -227,7 +220,7 @@ export default function NghiThucDotLaPage() {
                 ĐỐT LÁ THÔNG HỘ MỆNH
               </h1>
               <p className="font-body text-sm text-white/55 leading-relaxed italic">
-                "Nhấn giữ 3 giây để thắp ngọn lửa ảo. Khói thiêng bay lên sẽ quét sạch sương mù và hé lộ Lời Thì Thầm Của Ngày."
+                "Chạm một lần vào chiếc lá để thắp lửa và bắt đầu nghi thức (nhấn lại để hủy)."
               </p>
             </div>
 
@@ -261,8 +254,7 @@ export default function NghiThucDotLaPage() {
 
               {/* Center Leaf Plate */}
               <button
-                onMouseDown={startHolding}
-                onTouchStart={startHolding}
+                onClick={handleButtonClick}
                 className={`w-36 h-36 rounded-full flex flex-col items-center justify-center border transition-all duration-300 select-none ${
                   holding
                     ? "scale-95 border-amber-400/50 bg-amber-400/10 shadow-[0_0_30px_rgba(212,168,67,0.3)]"
@@ -275,7 +267,7 @@ export default function NghiThucDotLaPage() {
                   <span className="text-4xl">🍃</span>
                 )}
                 <span className="font-display text-[8px] text-white/40 tracking-widest uppercase mt-2">
-                  {holding ? "Thắp lửa..." : "Nhấn giữ 3s"}
+                  {holding ? "Hủy..." : "Chạm để đốt"}
                 </span>
               </button>
             </div>

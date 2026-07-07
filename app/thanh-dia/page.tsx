@@ -10,6 +10,7 @@ import {
   startAmbientPad,
   stopAmbientPad
 } from "@/lib/audio";
+import { speakText, stopSpeaking } from "@/lib/speech";
 
 interface DrawnCard {
   id: string;
@@ -36,6 +37,7 @@ export default function NghiThucDotLaPage() {
     return () => {
       stopAmbientPad();
       stopFireCrackling();
+      stopSpeaking();
     };
   }, []);
 
@@ -51,6 +53,21 @@ export default function NghiThucDotLaPage() {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Global release listener to make press-and-hold reliable on trackpads/mice
+  useEffect(() => {
+    if (holding) {
+      const handleGlobalRelease = () => {
+        stopHolding();
+      };
+      window.addEventListener("mouseup", handleGlobalRelease);
+      window.addEventListener("touchend", handleGlobalRelease);
+      return () => {
+        window.removeEventListener("mouseup", handleGlobalRelease);
+        window.removeEventListener("touchend", handleGlobalRelease);
+      };
+    }
+  }, [holding]);
 
   const startHolding = () => {
     if (isBurned || loading) return;
@@ -90,10 +107,7 @@ export default function NghiThucDotLaPage() {
   const stopHolding = () => {
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     stopFireCrackling();
-    if (!isBurned) {
-      setHolding(false);
-      setProgress(0);
-    }
+    setHolding(false);
   };
 
   const triggerRitual = async () => {
@@ -127,9 +141,13 @@ export default function NghiThucDotLaPage() {
       playCardFlip();
       setRevealedCard(data.card);
       setWhisper(data.whisper);
+
+      // Automatically speak the whisper aloud using AI voice
+      speakText(data.whisper);
     } catch (err: any) {
       setError(err.message);
       setIsBurned(false); // Let them try again if error
+      setProgress(0);
     } finally {
       setLoading(false);
     }
@@ -137,6 +155,7 @@ export default function NghiThucDotLaPage() {
 
   const handleReset = () => {
     stopFireCrackling();
+    stopSpeaking();
     setIsBurned(false);
     setRevealedCard(null);
     setWhisper("");
@@ -242,10 +261,7 @@ export default function NghiThucDotLaPage() {
               {/* Center Leaf Plate */}
               <button
                 onMouseDown={startHolding}
-                onMouseUp={stopHolding}
-                onMouseLeave={stopHolding}
                 onTouchStart={startHolding}
-                onTouchEnd={stopHolding}
                 className={`w-36 h-36 rounded-full flex flex-col items-center justify-center border transition-all duration-300 ${
                   holding
                     ? "scale-95 border-amber-400/50 bg-amber-400/10 shadow-[0_0_30px_rgba(212,168,67,0.3)]"

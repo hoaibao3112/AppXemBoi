@@ -1,26 +1,227 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap");
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: #080b14;
+  --color-foreground: #e8e0d5;
+  --color-primary: #8b5cf6;
+  --color-primary-glow: #a78bfa;
+  --color-secondary: #06b6d4;
+  --color-accent-gold: #d4a843;
+  --color-accent-green: #10b981;
+  --color-surface: #0f1629;
+  --color-surface-elevated: #151f3a;
+  --color-border: rgba(139, 92, 246, 0.2);
+  --color-muted: rgba(232, 224, 213, 0.5);
+  --font-sans: "Be Vietnam Pro", sans-serif;
+  --font-display: "Cinzel", serif;
+  --font-body: "Cormorant Garamond", serif;
+  --radius: 0.75rem;
+  --radius-lg: 1.25rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Starfield background */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 50%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 10%, rgba(255, 255, 255, 0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 80%, rgba(255, 255, 255, 0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 35%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 75%, rgba(255, 255, 255, 0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 60%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 90%, rgba(255, 255, 255, 0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 40%, rgba(255, 255, 255, 0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 20% 40%, rgba(167, 139, 250, 0.4) 0%, transparent 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Ambient glow effects */
+.glow-purple {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.3), 0 0 60px rgba(139, 92, 246, 0.15);
+}
+
+.glow-gold {
+  box-shadow: 0 0 20px rgba(212, 168, 67, 0.4), 0 0 40px rgba(212, 168, 67, 0.2);
+}
+
+.glow-green {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4), 0 0 40px rgba(16, 185, 129, 0.15);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 20px rgba(167, 139, 250, 0.8), 0 0 40px rgba(139, 92, 246, 0.4);
+}
+
+.text-glow-gold {
+  text-shadow: 0 0 15px rgba(212, 168, 67, 0.8), 0 0 30px rgba(212, 168, 67, 0.4);
+}
+
+.text-glow-green {
+  text-shadow: 0 0 15px rgba(16, 185, 129, 0.8), 0 0 30px rgba(16, 185, 129, 0.4);
+}
+
+/* Font classes */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(15, 22, 41, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.glass-gold {
+  background: rgba(15, 22, 41, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 168, 67, 0.2);
+}
+
+/* Tarot card flip animation */
+.tarot-card {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.tarot-card-inner {
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.tarot-card.flipped .tarot-card-inner {
+  transform: rotateY(180deg);
+}
+
+.tarot-card-front,
+.tarot-card-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.tarot-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 168, 67, 0.1) 40%,
+    rgba(212, 168, 67, 0.3) 50%,
+    rgba(212, 168, 67, 0.1) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}
+
+/* Pulse glow animation */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); }
+  50% { opacity: 0.85; box-shadow: 0 0 40px rgba(139, 92, 246, 0.7), 0 0 80px rgba(139, 92, 246, 0.3); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Float animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Fog/smoke animation */
+@keyframes drift {
+  0% { transform: translateX(-20px) translateY(0); opacity: 0; }
+  20% { opacity: 0.6; }
+  80% { opacity: 0.4; }
+  100% { transform: translateX(20px) translateY(-30px); opacity: 0; }
+}
+
+.fog-particle {
+  animation: drift 8s ease-in-out infinite;
+}
+
+/* Rune border */
+.rune-border {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--color-surface-elevated), var(--color-surface-elevated)) padding-box,
+    linear-gradient(135deg, rgba(139, 92, 246, 0.6), rgba(212, 168, 67, 0.3), rgba(139, 92, 246, 0.6)) border-box;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.4);
+  border-radius: 2px;
+}
+
+/* Mobile safe area */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@keyframes card-reveal {
+  0% { opacity: 0; transform: translateY(30px) scale(0.9); filter: blur(8px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+.card-reveal {
+  animation: card-reveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes typewriter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.typewriter-line {
+  animation: typewriter 0.5s ease forwards;
 }

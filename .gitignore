@@ -41,3 +41,23 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS metadata
+Thumbs.db
+desktop.ini
+
+# Local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+

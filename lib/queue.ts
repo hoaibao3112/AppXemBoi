@@ -6,4 +6,5 @@ const connection = new IORedis(process.env.REDIS_URL!, {
   enableReadyCheck: false,
 });
 
-export const notificationQueue = new Queue('notification', { connection });
+export const notificationQueue = new Queue('notification', { connection: connection as any });
+

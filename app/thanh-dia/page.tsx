@@ -43,10 +43,16 @@ export default function NghiThucDotLaPage() {
 
   const toggleAmbient = () => {
     if (ambientOn) {
-      stopAmbientPad();
+      try {
+        stopAmbientPad();
+      } catch (e) {}
       setAmbientOn(false);
     } else {
-      startAmbientPad();
+      try {
+        startAmbientPad();
+      } catch (e) {
+        console.warn("Ambient play failed:", e);
+      }
       setAmbientOn(true);
     }
   };
@@ -60,8 +66,12 @@ export default function NghiThucDotLaPage() {
     setError("");
     setProgress(0);
 
-    // Play ASMR Fire crackling sound
-    startFireCrackling();
+    // Play ASMR Fire crackling sound safely
+    try {
+      startFireCrackling();
+    } catch (e) {
+      console.warn("Failed to play ASMR crackle:", e);
+    }
 
     // Vibrate to indicate start (Haptic feedback)
     if (typeof navigator !== "undefined" && navigator.vibrate) {

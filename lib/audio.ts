@@ -3,6 +3,7 @@ let audioCtx: AudioContext | null = null;
 let ambientSource: { oscillators: OscillatorNode[]; gainNode: GainNode; filter: BiquadFilterNode } | null = null;
 let crackleInterval: NodeJS.Timeout | null = null;
 let fireGain: GainNode | null = null;
+let ambientSource_fire: AudioBufferSourceNode | null = null;
 
 function getAudioContext() {
   if (typeof window === 'undefined') return null;
@@ -151,7 +152,6 @@ export function startFireCrackling() {
 }
 
 // Global reference for stopping fire
-let ambientSource_fire: AudioBufferSourceNode | null = null;
 
 export function stopFireCrackling() {
   if (crackleInterval) {

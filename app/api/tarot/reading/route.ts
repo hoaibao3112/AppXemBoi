@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { drawCards, CLAN_NAMES_VI } from '@/lib/tarot';
-import { generateVongCommentaryWithGemini } from '@/lib/gemini';
+import { drawCards, CLAN_NAMES_VI, tarotDeck } from '@/lib/tarot';
+import { generateVongCommentaryDispatch } from '@/lib/ai-dispatcher';
+import { getZodiacInfo, getLifePathInfo } from '@/lib/numerology';
 import { handleError } from '@/lib/errors';
 import { z } from 'zod';
 import { checkMemoryUnlocks, calculateClanFromReadings, getNarrativeGreeting, FATEFUL_PROMPTS } from '@/lib/narrative';
@@ -95,18 +96,67 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // Dynamic generation from Google Gemini AI with rule-based fallback
+    // Calculate Zodiac, Life Path, and Soul Card Info if birthDate is present
+    let zodiacSign: string | undefined = undefined;
+    let zodiacElement: string | undefined = undefined;
+    let lifePathNumber: number | undefined = undefined;
+    let lifePathDescription: string | undefined = undefined;
+    let soulCardName: string | undefined = undefined;
+
+    if (user.birthDate) {
+      const zodiacInfo = getZodiacInfo(user.birthDate);
+      zodiacSign = zodiacInfo.sign;
+      zodiacElement = zodiacInfo.element;
+
+      const birthDateStr = user.birthDate.toISOString().split('T')[0];
+      const lifePathInfo = getLifePathInfo(birthDateStr);
+      lifePathNumber = lifePathInfo.number;
+      lifePathDescription = lifePathInfo.description;
+    }
+
+    if (user.soulCard) {
+      const soulDeckCard = tarotDeck.find(c => c.id === user.soulCard);
+      soulCardName = soulDeckCard ? soulDeckCard.name : user.soulCard;
+    }
+
+    // Fetch last 2 readings for historical context
+    const recentReadings = await prisma.reading.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 2,
+    });
+
+    const historyContext = recentReadings.map(r => {
+      const cardsText = r.cards.map(cardStr => {
+        const [cardId, orientation] = cardStr.split('|');
+        const isReversed = orientation === 'reversed';
+        const deckCard = tarotDeck.find(c => c.id === cardId);
+        const cardName = deckCard ? deckCard.name : cardId;
+        return `${cardName} (${isReversed ? 'Ngược' : 'Xuôi'})`;
+      }).join(', ');
+      
+      return `- Câu hỏi: "${r.question}"\n  Lá bài đã rút: [${cardsText}]`;
+    }).join('\n');
+
+    // Dynamic generation from AI with rule-based fallback
     let responseCommentary = '';
     let isAiGenerated = false;
 
     try {
       const aiUserContext = {
+        name: user.name,
         clan: updatedUser.clan,
         erc: updatedUser.erc,
         readingsCount: readingsCount + 1,
+        zodiacSign,
+        zodiacElement,
+        lifePathNumber,
+        lifePathDescription,
+        soulCardName,
+        historyContext,
       };
 
-      responseCommentary = await generateVongCommentaryWithGemini(
+      responseCommentary = await generateVongCommentaryDispatch(
         aiUserContext,
         data.question,
         cardsDrawn,
@@ -116,7 +166,7 @@ export async function POST(req: NextRequest) {
       );
       isAiGenerated = true;
     } catch (aiError) {
-      console.warn('⚠️ Gemini API call failed or key is missing. Falling back to rule-based template.', aiError);
+      console.warn('⚠️ AI Commentary generation failed. Falling back to template.', aiError);
       
       const comboText = combo ? `Combo [${combo.name}]: ${combo.description}` : `Mối liên kết nguyên tố: ${fallbackCommentary}`;
       responseCommentary = `${greeting}\n\n` +
@@ -173,6 +223,21 @@ export async function POST(req: NextRequest) {
       ];
     }
 
+    // Classify topic tag based on keywords in question
+    let questionTopicTag = 'khac';
+    const qLower = data.question.toLowerCase();
+    if (qLower.match(/(yêu|thương|tri kỷ|người ấy|ly hôn|hẹn hò|tình cảm|tình yêu|bạn trai|bạn gái|đối phương)/)) {
+      questionTopicTag = 'tinh_cam';
+    } else if (qLower.match(/(việc|sự nghiệp|công sở|sếp|đồng nghiệp|học|thi|kiểm tra|phỏng vấn|tuyển dụng|kinh doanh|công ty|đi làm)/)) {
+      questionTopicTag = 'cong_viec';
+    } else if (qLower.match(/(tiền|tài chính|nợ|đầu tư|lương|giàu|mua bán|chi tiêu|tài sản|tiền bạc|giá cả)/)) {
+      questionTopicTag = 'tai_chinh';
+    } else if (qLower.match(/(bố|mẹ|gia đình|con|vợ|chồng|nhà|họ hàng|gia tộc|phụ huynh|anh em|chị em)/)) {
+      questionTopicTag = 'gia_dinh';
+    } else if (qLower.match(/(bản thân|tôi|nội tâm|suy tư|tâm tư|linh hồn|tâm linh|định hướng|chữa lành|trầm cảm|cảm xúc)/)) {
+      questionTopicTag = 'ban_than';
+    }
+
     // Save reading record to database
     const reading = await prisma.reading.create({
       data: {
@@ -181,6 +246,7 @@ export async function POST(req: NextRequest) {
         cards: cardStrings,
         response: responseCommentary,
         ercChange: 0,
+        questionTopicTag,
       }
     });
 
@@ -193,14 +259,15 @@ export async function POST(req: NextRequest) {
     let shardAwarded: number | null = null;
     if (Math.random() < 0.20) {
       const existingShards = updatedUser.unlockedShards || [];
-      const missingShards = [1, 2, 3, 4, 5, 6].filter(s => !existingShards.includes(s));
+      const missingShards = [1, 2, 3, 4, 5, 6].filter((s) => !existingShards.includes(s));
       if (missingShards.length > 0) {
         shardAwarded = missingShards[Math.floor(Math.random() * missingShards.length)];
-        const nextShards = [...existingShards, shardAwarded];
-        await prisma.user.update({
-          where: { id: updatedUser.id },
-          data: { unlockedShards: nextShards }
-        });
+        // Execute atomic raw append in Postgres to eliminate race conditions
+        await prisma.$executeRaw`
+          UPDATE "User"
+          SET "unlockedShards" = array_append("unlockedShards", ${shardAwarded})
+          WHERE id = ${updatedUser.id} AND NOT (${shardAwarded} = ANY("unlockedShards"))
+        `;
       }
     }
 

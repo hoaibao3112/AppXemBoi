@@ -21,6 +21,10 @@ interface FormatProfileInput {
   activePactTarget: string | null;
   activePactExpiresAt: Date | null;
   unlockedShards: number[];
+  totalVerified: number;
+  totalCorrect: number;
+  accuracyPercent: number;
+  badgeTier: string;
   createdAt: Date;
   memories: { memoryIndex: number }[];
   _count: { readings: number };
@@ -41,6 +45,10 @@ function formatProfile(user: FormatProfileInput) {
     activePactTarget: user.activePactTarget,
     activePactExpiresAt: user.activePactExpiresAt ? user.activePactExpiresAt.toISOString() : null,
     unlockedShards: user.unlockedShards || [],
+    totalVerified: user.totalVerified,
+    totalCorrect: user.totalCorrect,
+    accuracyPercent: user.accuracyPercent,
+    badgeTier: user.badgeTier,
     createdAt: user.createdAt.toISOString(),
   };
 }
@@ -131,6 +139,10 @@ export async function DELETE(req: NextRequest) {
           clan: 'VoThuong',
           birthDate: null,
           soulCard: null,
+          totalVerified: 0,
+          totalCorrect: 0,
+          accuracyPercent: 0,
+          badgeTier: 'fog',
         }
       })
     ]);

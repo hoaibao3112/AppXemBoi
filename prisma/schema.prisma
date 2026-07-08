@@ -19,12 +19,21 @@ model User {
   activePactTarget    String?
   activePactExpiresAt DateTime?
   unlockedShards      Int[]             @default([])
+  pushToken           String?
+  totalVerified       Int               @default(0)
+  totalCorrect        Int               @default(0)
+  accuracyPercent     Float             @default(0)
+  badgeTier           String            @default("fog")
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   readings            Reading[]
   ercLogs             ERCLog[]
   memories            UnlockedMemory[]
   whispers            Whisper[]
+  pushTriggers        PushTrigger[]
+  pushLogs            PushLog[]
+  events              AppEvent[]
+  compatibilityChecks CompatibilityCheck[]
 }
 
 model Reading {
@@ -35,9 +44,14 @@ model Reading {
   cards      String[] // Danh sách các lá bài (ví dụ: ["The Fool", "The Magician"])
   response   String   // Đoạn thoại phản hồi từ Vọng
   ercChange  Int      // Mức độ thay đổi ERC trong lượt bói này
+  verified   Boolean?
+  verifiedAt DateTime?
+  snoozeUntil DateTime?
+  snoozeCount Int      @default(0)
+  questionTopicTag String?
   createdAt  DateTime @default(now())
 
-  @@index([userId, createdAt])
+  @@index([userId, verified, createdAt])
 }
 
 model ERCLog {
@@ -70,4 +84,84 @@ model Whisper {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+enum PushTriggerType {
+  memory_pending
+  prophecy_pending
+  reengage_d3
+  reengage_d7
+  reengage_d14
+  reengage_d30
+  habit_time
+}
+
+enum PushStatus {
+  pending
+  sent
+  skipped_dedup
+  skipped_optout
+}
+
+model PushTrigger {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  triggerType     PushTriggerType
+  relatedEntityId String?
+  scheduledAt     DateTime
+  sentAt          DateTime?
+  status          PushStatus      @default(pending)
+  createdAt       DateTime        @default(now())
+
+  @@index([userId, status, scheduledAt])
+}
+
+model PushLog {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  triggerType     PushTriggerType
+  relatedEntityId String?
+  messageText     String
+  sentAt          DateTime        @default(now())
+  openedAt        DateTime?
+
+  @@index([userId, sentAt])
+}
+
+model AppEvent {
+  id              String   @id @default(uuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType       String
+  relatedEntityId String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  @@index([userId, eventType])
+  @@index([eventType, createdAt])
+}
+
+enum CompatibilityBranch {
+  harmony
+  tension
+  mirror
+  neutral
+}
+
+model CompatibilityCheck {
+  id                 String              @id @default(uuid())
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partnerName        String
+  partnerBirthDate   DateTime
+  partnerSoulCard    String
+  partnerClan        String
+  relationshipBranch CompatibilityBranch
+  witnessCard        String
+  resultText         String
+  createdAt          DateTime            @default(now())
+
+  @@index([userId, createdAt])
 }

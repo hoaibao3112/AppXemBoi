@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cinzel, Cormorant_Garamond, Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
+import { PushInitializer } from "@/components/PushInitializer";
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
@@ -46,7 +47,10 @@ export default function RootLayout({
       lang="vi"
       className={`${cinzel.variable} ${cormorant.variable} ${beVietnamPro.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col antialiased">{children}</body>
+      <body className="min-h-full flex flex-col antialiased">
+        <PushInitializer />
+        {children}
+      </body>
     </html>
   );
 }

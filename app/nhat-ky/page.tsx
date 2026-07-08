@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -18,6 +18,9 @@ interface Reading {
   cards: MappedCard[];
   response: string;
   ercChange: number;
+  verified: boolean | null;
+  snoozeUntil: string | null;
+  snoozeCount: number;
   createdAt: string;
 }
 
@@ -68,6 +71,13 @@ export default function NhatKyPage() {
   const [expandedReading, setExpandedReading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"user" | "vong">("user");
   const [userErc, setUserErc] = useState<number>(0);
+  const [totalVerified, setTotalVerified] = useState<number>(0);
+  const [totalCorrect, setTotalCorrect] = useState<number>(0);
+  const [accuracyPercent, setAccuracyPercent] = useState<number>(0);
+  const [badgeTier, setBadgeTier] = useState<string>("fog");
+  const [vongSpeechText, setVongSpeechText] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const loggedPrompts = useRef<Set<string>>(new Set());
 
   const fetchReadings = async (currentPage: number, currentClan: string) => {
     setLoading(true);
@@ -116,13 +126,132 @@ export default function NhatKyPage() {
       })
         .then((r) => r.json())
         .then((data) => {
-          if (typeof data.erc === "number") {
-            setUserErc(data.erc);
-          }
+          if (typeof data.erc === "number") setUserErc(data.erc);
+          if (typeof data.totalVerified === "number") setTotalVerified(data.totalVerified);
+          if (typeof data.totalCorrect === "number") setTotalCorrect(data.totalCorrect);
+          if (typeof data.accuracyPercent === "number") setAccuracyPercent(data.accuracyPercent);
+          if (typeof data.badgeTier === "string") setBadgeTier(data.badgeTier);
         })
         .catch(console.error);
     }
   }, []);
+
+  useEffect(() => {
+    if (!expandedReading) return;
+    const reading = readings.find((r) => r.id === expandedReading);
+    if (!reading) return;
+
+    const ageInMs = Date.now() - new Date(reading.createdAt).getTime();
+    const ageInDays = ageInMs / (1000 * 60 * 60 * 24);
+    const isEligible =
+      ageInDays >= 3 &&
+      ageInDays <= 30 &&
+      reading.verified === null &&
+      (reading.snoozeCount === undefined || reading.snoozeCount < 2) &&
+      (!reading.snoozeUntil || new Date(reading.snoozeUntil).getTime() < Date.now());
+
+    if (isEligible && !loggedPrompts.current.has(expandedReading)) {
+      loggedPrompts.current.add(expandedReading);
+      const token = localStorage.getItem("token");
+      fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          eventType: "verify_prompt_shown",
+          relatedEntityId: expandedReading,
+        }),
+      }).catch(console.error);
+    }
+  }, [expandedReading, readings]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pushLogId = urlParams.get("pushLogId");
+      if (pushLogId && !loggedPrompts.current.has(`push_${pushLogId}`)) {
+        loggedPrompts.current.add(`push_${pushLogId}`);
+        const token = localStorage.getItem("token");
+        fetch("/api/events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            eventType: "push_opened",
+            relatedEntityId: pushLogId,
+          }),
+        }).catch(console.error);
+      }
+    }
+  }, []);
+
+  const handleVerify = async (readingId: string, status: "correct" | "incorrect" | "snooze") => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try {
+        navigator.vibrate(40);
+      } catch (e) {}
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("/api/tarot/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ readingId, status }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không thể thực hiện đối chiếu.");
+
+      // Dynamically update the target reading in list state
+      setReadings((prev) =>
+        prev.map((r) => {
+          if (r.id === readingId) {
+            return {
+              ...r,
+              verified: status === "correct" ? true : status === "incorrect" ? false : null,
+              snoozeCount: status === "snooze" ? (r.snoozeCount || 0) + 1 : r.snoozeCount,
+              snoozeUntil: status === "snooze" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null,
+            };
+          }
+          return r;
+        })
+      );
+
+      // Update global accuracy statistics
+      if (data.stats) {
+        setTotalVerified(data.stats.totalVerified);
+        setTotalCorrect(data.stats.totalCorrect);
+        setAccuracyPercent(data.stats.accuracyPercent);
+        setBadgeTier(data.stats.badgeTier);
+      }
+
+      // Play pre-recorded static audio response
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      const audioObj = new Audio(data.audioUrl);
+      audioRef.current = audioObj;
+      audioObj.play().catch(console.error);
+
+      // Show subtitle response
+      setVongSpeechText(data.commentary);
+      setTimeout(() => {
+        setVongSpeechText((prev) => (prev === data.commentary ? null : prev));
+      }, 9000);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
 
   const handleClanChange = (clan: string) => {
     setClanFilter(clan);
@@ -216,6 +345,32 @@ export default function NhatKyPage() {
             📖
           </button>
         </header>
+
+        {/* Accuracy Badge and Stats Widget */}
+        {totalVerified >= 5 && (
+          <div className="mx-4 mb-4 p-4 rounded-2xl bg-white/3 border border-white/5 shadow-inner flex items-center justify-between animate-fade-in">
+            <div className="flex flex-col gap-1 text-left">
+              <span className="font-display text-[9px] tracking-widest text-purple-400 uppercase font-semibold">Độ Thấu Cảm của Vọng</span>
+              <h4 className="font-display text-xs text-white/90 font-semibold tracking-wide">
+                {badgeTier === "fog" && "Sương mù còn dày 🌫️"}
+                {badgeTier === "understanding" && "Bắt đầu thấu hiểu 🌟"}
+                {badgeTier === "confidant" && "Tri kỷ qua màn sương 🔮"}
+                {badgeTier === "seer" && "Thấu suốt tâm can 👁️"}
+              </h4>
+              <p className="font-sans text-[10px] text-white/40 italic leading-snug">
+                {badgeTier === "fog" && "Có lẽ Vọng và ngươi vẫn đang tìm cách hiểu nhau."}
+                {badgeTier === "understanding" && "Những lần đúng đang dần nhiều hơn."}
+                {badgeTier === "confidant" && "Vọng đang dần đọc đúng những gì ngươi giấu kín."}
+                {badgeTier === "seer" && "Hiếm có lữ khách nào đạt tới mức đồng điệu này với Vọng."}
+              </p>
+            </div>
+            <div className="flex flex-col items-center justify-center bg-white/2 rounded-full w-14 h-14 border border-white/10 flex-shrink-0">
+              <span className="font-display text-[15px] font-bold text-purple-300">{Math.round(accuracyPercent)}%</span>
+              <span className="text-[7px] text-white/40 font-sans tracking-wide">CHÍNH XÁC</span>
+            </div>
+          </div>
+        )}
+
         {/* Tab Switcher */}
         <div className="flex border-b border-white/5 mx-4 mb-3">
           <button
@@ -398,6 +553,81 @@ export default function NhatKyPage() {
                             {activeTab === "vong" ? getVongReflection(reading) : reading.response}
                           </p>
                         </div>
+
+                        {/* Prophecy Verification UI */}
+                        {activeTab === "user" && (() => {
+                          const ageInMs = Date.now() - new Date(reading.createdAt).getTime();
+                          const ageInDays = ageInMs / (1000 * 60 * 60 * 24);
+                          const isEligible =
+                            ageInDays >= 3 &&
+                            ageInDays <= 30 &&
+                            reading.verified === null &&
+                            (reading.snoozeCount === undefined || reading.snoozeCount < 2) &&
+                            (!reading.snoozeUntil || new Date(reading.snoozeUntil).getTime() < Date.now());
+
+                          return (
+                            <div className="mt-4 pt-3 border-t border-white/5 flex flex-col gap-2.5">
+                              {/* Already verified Correct */}
+                              {reading.verified === true && (
+                                <div className="text-[10px] font-sans font-medium text-emerald-400 flex items-center gap-1.5 justify-center py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
+                                  <span>✓</span> Lời tiên tri đã ứng nghiệm chính xác.
+                                </div>
+                              )}
+                              
+                              {/* Already verified Incorrect */}
+                              {reading.verified === false && (
+                                <div className="text-[10px] font-sans font-medium text-rose-400 flex items-center gap-1.5 justify-center py-1 bg-rose-500/5 border border-rose-500/10 rounded-lg">
+                                  <span>✗</span> Lời tiên tri không ứng nghiệm.
+                                </div>
+                              )}
+
+                              {/* Eligible to verify */}
+                              {isEligible && (
+                                <div className="flex flex-col gap-2">
+                                  <span className="font-display text-[8px] text-white/30 tracking-wider text-center uppercase">
+                                    Lời tiên tri của Vọng có ứng nghiệm không?
+                                  </span>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleVerify(reading.id, "correct");
+                                      }}
+                                      className="flex-1 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-sans text-xs font-semibold active:scale-95 transition-all hover:bg-emerald-500/25"
+                                    >
+                                      Đúng 👍
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleVerify(reading.id, "incorrect");
+                                      }}
+                                      className="flex-1 py-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 font-sans text-xs font-semibold active:scale-95 transition-all hover:bg-rose-500/25"
+                                    >
+                                      Sai 👎
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleVerify(reading.id, "snooze");
+                                      }}
+                                      className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 font-sans text-xs active:scale-95 transition-all hover:bg-white/10"
+                                    >
+                                      Chưa rõ ⏳
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Snoozed and waiting */}
+                              {reading.verified === null && reading.snoozeUntil && new Date(reading.snoozeUntil).getTime() >= Date.now() && (
+                                <div className="text-[9px] font-sans text-white/30 text-center italic py-1 bg-white/2 border border-white/5 rounded-lg">
+                                  Đang hoãn đối chiếu quẻ này (Lượt {reading.snoozeCount}/2). Sẽ hiện lại từ ngày {new Date(reading.snoozeUntil).toLocaleDateString("vi-VN")}.
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
@@ -445,6 +675,7 @@ export default function NhatKyPage() {
             { href: "/ban-do", icon: "🗺️", label: "Cõi Giới" },
             { href: "/thanh-dia", icon: "🔥", label: "Thánh Địa" },
             { href: "/chon-trai-bai", icon: "🔮", label: "Trải Bài" },
+            { href: "/ghep-doi", icon: "💖", label: "Ghép Đôi" },
             { href: "/nhat-ky", icon: "📋", label: "Nhật Ký", active: true },
             { href: "/ho-so", icon: "👤", label: "Hồ Sơ" },
           ].map((item) => (
@@ -462,6 +693,30 @@ export default function NhatKyPage() {
           ))}
         </div>
       </nav>
+
+      {/* Vọng Speech Subtitle Popup */}
+      {vongSpeechText && (
+        <div className="fixed bottom-24 left-4 right-4 z-50 p-4 rounded-2xl bg-slate-950/95 border border-amber-500/20 shadow-2xl flex items-start gap-3 animate-slide-up">
+          <div className="w-10 h-10 rounded-full border border-amber-500/30 overflow-hidden flex-shrink-0 bg-amber-950/40 flex items-center justify-center text-lg shadow-inner">
+            👁️
+          </div>
+          <div className="flex flex-col gap-1 text-left flex-1">
+            <span className="font-display text-[9px] tracking-widest text-amber-400 uppercase font-semibold">Thì Thầm của Vọng</span>
+            <p className="font-body text-xs text-amber-100/90 leading-relaxed italic">
+              "{vongSpeechText}"
+            </p>
+          </div>
+          <button 
+            onClick={() => {
+              if (audioRef.current) audioRef.current.pause();
+              setVongSpeechText(null);
+            }}
+            className="text-white/40 hover:text-white/80 transition-all text-xs px-1.5 py-0.5 rounded border border-white/10 bg-white/5 active:scale-95"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

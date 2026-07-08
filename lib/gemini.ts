@@ -6,25 +6,38 @@ interface UserAIContext {
   clan: string;
   erc: number;
   readingsCount: number;
+  zodiacSign?: string;
+  zodiacElement?: string;
+  lifePathNumber?: number;
+  lifePathDescription?: string;
+  soulCardName?: string;
+  historyContext?: string;
 }
 
-let cachedGenAI: GoogleGenerativeAI | null = null;
+const cachedClients = new Map<string, GoogleGenerativeAI>();
 
-function getGeminiClient(): GoogleGenerativeAI {
-  if (cachedGenAI) {
-    return cachedGenAI;
-  }
-
+export function getGeminiClient(): GoogleGenerativeAI {
   let currentKey = process.env.GEMINI_API_KEY;
-  if (currentKey) {
-    currentKey = currentKey.replace(/['"]/g, '').trim();
-  }
-  if (!currentKey || currentKey === '') {
+  if (!currentKey || currentKey.trim() === '') {
     throw new Error('GEMINI_API_KEY is not defined in environment variables');
   }
 
-  cachedGenAI = new GoogleGenerativeAI(currentKey);
-  return cachedGenAI;
+  // Support multiple keys separated by commas for load balancing / rotation
+  const keys = currentKey.split(',').map(k => k.replace(/['"]/g, '').trim()).filter(Boolean);
+  if (keys.length === 0) {
+    throw new Error('No valid Gemini API keys found in GEMINI_API_KEY environment variable');
+  }
+
+  // Randomly select one of the keys to rotate usage and distribute the load
+  const selectedKey = keys[Math.floor(Math.random() * keys.length)];
+
+  let client = cachedClients.get(selectedKey);
+  if (!client) {
+    client = new GoogleGenerativeAI(selectedKey);
+    cachedClients.set(selectedKey, client);
+  }
+
+  return client;
 }
 
 async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
@@ -45,10 +58,6 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
   return text.trim();
 }
 
-/**
- * Generates Vọng's dynamic narrative commentary using Google Gemini 1.5 Flash (free tier compatible).
- * Includes fallback protection.
- */
 export async function generateVongCommentaryWithGemini(
   user: UserAIContext,
   question: string,
@@ -71,8 +80,8 @@ export async function generateVongCommentaryWithGemini(
   let relationalTone = '';
   let addressTerm = 'lữ khách';
   if (user.erc >= 30) {
-    relationalTone = 'Xưng hô trìu mến là "người bạn hiền hoà" hoặc "người bạn phương xa". Tông giọng vỗ về, ấm áp, thấu cảm và dìu dắt.';
-    addressTerm = 'người bạn hiền hoà';
+    relationalTone = 'Xưng hô trìu mến là "người bạn hiền hoá" hoặc "người bạn phương xa". Tông giọng vỗ về, ấm áp, thấu cảm và dìu dắt.';
+    addressTerm = 'người bạn hiền hoá';
   } else if (user.erc <= -30) {
     relationalTone = 'Xưng hô dứt khoát, tôn trọng là "hành giả cô độc" hoặc "hành giả sắc sảo". Tông giọng thẳng thắn, quyết liệt, lý trí sắc bén và thúc đẩy tự lực.';
     addressTerm = 'hành giả cô độc';
@@ -104,6 +113,40 @@ export async function generateVongCommentaryWithGemini(
     celestialVisual = 'Cõi sương hôm nay xáo động, nhiễu loạn màu đỏ tím hỗn loạn của sao thuỷ nghịch hành.';
   }
 
+  // 5. Build Personal context
+  let personalContext = '';
+  if (user.name) {
+    personalContext += `- Tên của lữ khách: "${user.name}". Hãy khéo léo gọi tên này trong lời thoại hội thoại một cách tự nhiên và trìu mến.\n`;
+  }
+  if (user.zodiacSign) {
+    personalContext += `- Cung hoàng đạo: ${user.zodiacSign} (hệ ${user.zodiacElement}). Hãy sử dụng năng lượng tự nhiên của cung hoàng đạo này để đối chiếu hành vi, tính cách hay cảm xúc hiện tại của họ.\n`;
+  }
+  if (user.lifePathNumber) {
+    personalContext += `- Số chủ đạo Thần số học: Số ${user.lifePathNumber} (${user.lifePathDescription}). Hãy dùng đặc trưng tính cách của con số chủ đạo này để đưa ra lời khuyên/lời tự vấn sâu sắc.\n`;
+  }
+  if (user.soulCardName) {
+    personalContext += `- Sứ Giả Hộ Mệnh Linh Hồn: Sứ Giả ${user.soulCardName}. Thỉnh thoảng có thể gợi nhắc về sự bảo trợ của thực thể hộ mệnh này.\n`;
+  }
+
+  // 6. Build History context
+  let historyPrompt = '';
+  if (user.historyContext && user.historyContext.trim().length > 0) {
+    historyPrompt = `
+Dưới đây là lịch sử câu hỏi bói bài gần đây của lữ khách này:
+${user.historyContext}
+Hãy chú ý: Nếu câu hỏi hiện tại có liên quan hoặc lặp lại các nỗi niềm cũ (ví dụ: vẫn trăn trở về người cũ, vẫn bế tắc trong công việc...), bạn hãy khéo léo bình luận rằng bạn nhận ra chấp niệm dai dẳng này của lữ khách (ví dụ: "Ta nhớ lần trước ngươi đã hỏi về... nay lòng ngươi vẫn chưa yên sao?").
+`;
+  }
+
+  const interpretationRule = `
+ĐẶC BIỆT LƯU Ý VỀ LUẬN GIẢI CHỦ ĐỀ:
+- Trải bài 3 lá có các vị trí mặc định là: Lá 1 (Bản thân lữ khách), Lá 2 (Đối phương), Lá 3 (Mối quan hệ/Kết nối).
+- Nếu câu hỏi của lữ khách KHÔNG phải về tình cảm/mối quan hệ đôi lứa (ví dụ họ hỏi về sự nghiệp, tiền tài, học tập, hoặc định hướng bản thân):
+  + Hãy diễn giải vị trí "Đối phương" theo nghĩa ẩn dụ: đó là ngoại cảnh, chướng ngại vật khách quan, đối thủ, thử thách hoặc cơ hội bên ngoài.
+  + Hãy diễn giải vị trí "Mối quan hệ" theo nghĩa ẩn dụ: đó là mối liên kết giữa bản thân lữ khách với sự nghiệp, với tài chính, hoặc với chính thế giới nội tâm của họ.
+  + Luận giải phải bám sát 100% vào đúng chủ đề được hỏi (công việc, tài chính, bản thân...). CẤM tuyệt đối hướng câu trả lời về chuyện tình yêu đôi lứa nếu họ không hỏi.
+`;
+
   // Cards layout prompt
   const cardsDescription = drawnCards.map((d, i) => {
     const positionText = d.isReversed ? 'Ngược (Reversed)' : 'Xuôi (Upright)';
@@ -131,9 +174,14 @@ Dưới đây là các ràng buộc nghiêm ngặt về ngôn từ bạn bắt b
 4. Bối cảnh thiên nhiên cõi sương:
    - ${celestialVisual ? celestialVisual : 'Sương mù dày đặc bao phủ cổng cõi vô định.'}
 
+Thông tin cá nhân của lữ khách:
+${personalContext ? personalContext : '- Chưa rõ ngày sinh và tên lữ khách.'}
+${historyPrompt}
+${interpretationRule}
+
 Nhiệm vụ:
 Hãy viết lời luận giải và kết nối 3 lá bài Tarot này lại thành một mạch kể chuyện hội thoại mượt mà cho câu hỏi: "${question}".
-Bạn hãy diễn giải ngắn gọn ý nghĩa của từng lá bài và liên kết chúng dựa vào combo hoặc ngũ hành nguyên tố được cung cấp.
+Bạn hãy diễn giải ngắn gọn ý nghĩa của từng lá bài theo đúng vị trí và chủ đề câu hỏi, liên kết chúng dựa vào combo hoặc ngũ hành nguyên tố được cung cấp.
 Kết thúc lời thoại bằng một câu hỏi gợi mở sâu sắc chứa đựng sự phản ánh số phận để lữ khách suy ngẫm.
 
 CẤM:

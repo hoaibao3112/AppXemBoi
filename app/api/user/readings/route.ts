@@ -62,6 +62,9 @@ export async function GET(req: NextRequest) {
           cards: mappedCards,
           response: reading.response,
           ercChange: reading.ercChange,
+          verified: reading.verified,
+          snoozeUntil: reading.snoozeUntil ? reading.snoozeUntil.toISOString() : null,
+          snoozeCount: reading.snoozeCount,
           createdAt: reading.createdAt.toISOString(),
         };
       });
@@ -92,6 +95,9 @@ export async function GET(req: NextRequest) {
           cards: mappedCards,
           response: reading.response,
           ercChange: reading.ercChange,
+          verified: reading.verified,
+          snoozeUntil: reading.snoozeUntil ? reading.snoozeUntil.toISOString() : null,
+          snoozeCount: reading.snoozeCount,
           createdAt: reading.createdAt.toISOString(),
         };
       });

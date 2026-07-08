@@ -275,6 +275,25 @@ export default function BanDoPage() {
   const totalDiscovered = regions.reduce((sum, r) => sum + r.discoveredCount, 0);
   const totalCards = regions.reduce((sum, r) => sum + r.totalCards, 0);
 
+  const getCardClan = (cardId: string) => {
+    if (!cardId) return null;
+    if (cardId.startsWith("major-") || cardId.includes("major")) return "VoThuong";
+    if (cardId.startsWith("wands-") || cardId.includes("wands")) return "DiemHoa";
+    if (cardId.startsWith("cups-") || cardId.includes("cups")) return "ThuyNguyet";
+    if (cardId.startsWith("swords-") || cardId.includes("swords")) return "PhongKiem";
+    if (cardId.startsWith("pentacles-") || cardId.includes("pentacles") || cardId.includes("pents")) return "ThoKim";
+    
+    const num = parseInt(cardId);
+    if (!isNaN(num)) {
+      if (num <= 21) return "VoThuong";
+      if (num <= 35) return "DiemHoa";
+      if (num <= 49) return "ThuyNguyet";
+      if (num <= 63) return "PhongKiem";
+      return "ThoKim";
+    }
+    return null;
+  };
+
   return (
     <div className="relative flex flex-col min-h-screen">
       {/* Background */}
@@ -303,30 +322,138 @@ export default function BanDoPage() {
           </div>
         </header>
 
-        {/* Regions list */}
-        <div className="flex flex-col gap-4 px-4 py-2">
+        {/* Graphical Constellation Map Board */}
+        <div className="mx-4 my-2 relative w-[calc(100%-2rem)] h-[480px] rounded-2xl border border-purple-500/15 overflow-hidden bg-black/40 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] backdrop-blur-md">
+          {/* Starry night sky effect */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,10,35,0.8)_0%,rgba(5,5,10,0.95)_100%)]" />
+          
+          {/* Constellation SVG Lines connecting nodes */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+            {/* Pulsing connections to VoThuong */}
+            <line x1="50%" y1="50%" x2="20%" y2="22%" stroke="rgba(167, 139, 250, 0.25)" strokeWidth="1.5" strokeDasharray="6,6" className="animate-pulse" />
+            <line x1="50%" y1="50%" x2="80%" y2="22%" stroke="rgba(167, 139, 250, 0.25)" strokeWidth="1.5" strokeDasharray="6,6" className="animate-pulse" />
+            <line x1="50%" y1="50%" x2="20%" y2="78%" stroke="rgba(167, 139, 250, 0.25)" strokeWidth="1.5" strokeDasharray="6,6" className="animate-pulse" />
+            <line x1="50%" y1="50%" x2="80%" y2="78%" stroke="rgba(167, 139, 250, 0.25)" strokeWidth="1.5" strokeDasharray="6,6" className="animate-pulse" />
+          </svg>
+
+          {/* Interactive Floating Nodes */}
           {regions.map((region) => {
-            const isExpanded = activeRegion === region.clan;
+            const coords: Record<string, { top: string; left: string }> = {
+              DiemHoa: { top: '22%', left: '20%' },
+              ThuyNguyet: { top: '22%', left: '80%' },
+              VoThuong: { top: '50%', left: '50%' },
+              PhongKiem: { top: '78%', left: '20%' },
+              ThoKim: { top: '78%', left: '80%' }
+            };
+            const coord = coords[region.clan] || { top: '50%', left: '50%' };
             const clanColor = getClanColor(region.clan);
+            
+            const pactClan = activePact ? getCardClan(activePact.cardId) : null;
+            const hasActivePactHere = pactClan === region.clan;
 
             return (
-              <div
+              <button
                 key={region.clan}
-                className="rounded-2xl overflow-hidden border transition-all duration-300"
+                onClick={() => {
+                  setActiveRegion(region.clan);
+                  try {
+                    playCardFlip();
+                    triggerHaptic(50);
+                  } catch (e) {}
+                }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 transition-all duration-300 hover:scale-110 group cursor-pointer z-10"
                 style={{
-                  background: isExpanded ? `${clanColor}08` : "rgba(15,22,41,0.7)",
-                  borderColor: isExpanded ? `${clanColor}45` : "rgba(255,255,255,0.06)",
-                  boxShadow: isExpanded ? `0 0 20px ${clanColor}15` : "none",
+                  top: coord.top,
+                  left: coord.left,
                 }}
               >
-                {/* Header click to expand */}
+                {/* Node circle */}
                 <div
-                  onClick={() => setActiveRegion(isExpanded ? null : region.clan)}
-                  className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/2"
+                  className={`w-12 h-12 rounded-full flex items-center justify-center text-lg relative shadow-lg transition-all duration-500`}
+                  style={{
+                    background: "rgba(10, 8, 25, 0.9)",
+                    border: `1px solid ${clanColor}45`,
+                    boxShadow: `0 0 15px ${clanColor}20`,
+                  }}
                 >
-                  <div className="flex items-start gap-3">
+                  {/* Outer pulse animation for interactive nodes */}
+                  <div
+                    className="absolute inset-0 rounded-full animate-ping opacity-25"
+                    style={{ background: clanColor }}
+                  />
+                  {getClanEmoji(region.clan)}
+                  
+                  {hasActivePactHere && (
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 border border-amber-300 flex items-center justify-center text-[10px] shadow-[0_0_10px_rgba(245,158,11,0.6)] animate-bounce z-20">
+                      📜
+                    </div>
+                  )}
+                </div>
+
+                {/* Region name tag */}
+                <div
+                  className="px-2.5 py-0.5 rounded-full border text-[9px] font-display font-semibold tracking-wider transition-all"
+                  style={{
+                    background: "rgba(8, 11, 20, 0.85)",
+                    borderColor: `${clanColor}30`,
+                    color: clanColor,
+                  }}
+                >
+                  {region.clanNameVi.replace("Tộc ", "")}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Dynamic Astrological Events Panel */}
+        <div className="mx-4 mt-4 p-4 rounded-2xl border border-purple-500/10 bg-purple-950/5 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-300 text-sm">🌌</span>
+            <span className="font-display text-[9px] text-white/80 tracking-widest font-semibold uppercase">
+              HIỆN TRẠNG TINH TÚ CÕI GIỚI
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2 text-left">
+            <div className="p-3 rounded-xl bg-white/2 border border-white/5 flex flex-col gap-1">
+              <span className="text-[8px] font-display text-amber-300 font-bold uppercase tracking-wider">
+                🌕 Hiện Trạng Trăng Tròn
+              </span>
+              <p className="text-[9px] text-white/50 leading-relaxed">
+                Trăng sáng vằng vặc: Tăng <strong className="text-amber-300 font-medium">+15%</strong> cơ hội rơi **Mảnh Gương Vỡ** khi lật bài!
+              </p>
+            </div>
+            
+            <div className="p-3 rounded-xl bg-white/2 border border-white/5 flex flex-col gap-1">
+              <span className="text-[8px] font-display text-cyan-300 font-bold uppercase tracking-wider">
+                🌀 Thủy Tinh Nghịch Hành
+              </span>
+              <p className="text-[9px] text-white/50 leading-relaxed">
+                Nhiễu loạn từ trường: Sứ Giả có <strong className="text-rose-300 font-medium">35%</strong> xác suất lật ra ở **Chiều Ngược**!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Region Details Overlay Modal */}
+        {activeRegion && (() => {
+          const region = regions.find(r => r.clan === activeRegion);
+          if (!region) return null;
+          const clanColor = getClanColor(region.clan);
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in text-white">
+              <div
+                className="w-full max-w-md rounded-2xl p-5 border text-left flex flex-col gap-4 relative bg-[#0f1629] overflow-y-auto max-h-[85vh] animate-scale-up"
+                style={{
+                  borderColor: `${clanColor}40`,
+                  boxShadow: `0 0 35px ${clanColor}15`,
+                }}
+              >
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <div className="flex items-center gap-2.5">
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-base"
                       style={{
                         background: `${clanColor}15`,
                         border: `1px solid ${clanColor}35`,
@@ -334,126 +461,157 @@ export default function BanDoPage() {
                     >
                       {getClanEmoji(region.clan)}
                     </div>
-                    <div className="flex flex-col text-left">
-                      <div className="flex items-center gap-2">
-                        <h3
-                          className="font-display text-sm font-semibold tracking-wide"
-                          style={{ color: isExpanded ? "#ffffff" : `${clanColor}dd` }}
-                        >
-                          {region.clanNameVi}
-                        </h3>
-                        <span className="text-[10px] font-sans text-white/35">
-                          ({region.discoveredCount}/{region.totalCards})
-                        </span>
-                      </div>
-                      <p className="font-body text-xs text-white/45 mt-0.5 leading-relaxed italic">
-                        {region.clan === "VoThuong"
-                          ? "Nơi cư ngụ của 22 Sứ Giả Lớn Major Arcana."
-                          : `Tộc nguyên tố của các Sứ Giả ${region.clanNameVi.replace("Tộc ", "")}.`}
-                      </p>
+                    <div>
+                      <h3 className="font-display text-sm font-bold tracking-wider" style={{ color: clanColor }}>
+                        {region.clanNameVi}
+                      </h3>
+                      <span className="text-[10px] font-sans text-white/40">
+                        Tiến độ tộc hệ: {region.discoveredCount}/{region.totalCards} Sứ Giả
+                      </span>
                     </div>
                   </div>
-                  <span className="text-white/20 text-xs">{isExpanded ? "∧" : "∨"}</span>
+                  <button
+                    onClick={() => setActiveRegion(null)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
                 </div>
 
-                {/* Region Details */}
-                {isExpanded && (
-                  <div className="px-4 pb-4 pt-2 border-t border-white/5 flex flex-col gap-4">
-                    {/* Discovered cards list */}
-                    <div className="flex flex-col gap-2">
-                      <span className="font-display text-[9px] text-white/35 tracking-widest uppercase">
-                        Sứ giả đã gặp
-                      </span>
+                {/* Description */}
+                <p className="font-body text-xs text-white/55 italic leading-relaxed bg-white/2 p-3 rounded-xl border border-white/5">
+                  {region.clan === "VoThuong"
+                    ? "Cõi vô định nằm tại tâm điểm vạn vật, là nơi hội tụ của 22 Sứ Giả Lớn đại diện cho các ngã rẽ cuộc đời."
+                    : `Vùng đất mang thuộc tính ${region.clanNameVi.replace("Tộc ", "")}. Năng lượng nơi đây đang nuôi dưỡng các Sứ Giả thuộc tộc hệ này.`}
+                </p>
 
-                      {region.discoveredCards.length === 0 ? (
-                        <p className="font-body text-xs text-white/25 italic">
-                          Chưa gặp Sứ Giả nào của tộc hệ này.
-                        </p>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2">
-                          {region.discoveredCards.map((card) => (
-                            <div
-                              key={card.cardId}
-                              className="rounded-xl p-3 flex flex-col gap-1 border"
-                              style={{
-                                background: "rgba(255,255,255,0.02)",
-                                borderColor: `${clanColor}20`,
-                              }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-display text-xs text-white/80 truncate">
-                                  {card.cardName}
-                                </span>
-                                <span className="text-[10px] font-sans text-white/30">
-                                  x{card.encounterCount}
-                                </span>
-                              </div>
-                              {/* Brightness indicator */}
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <div className="h-1.5 flex-1 rounded-full bg-white/5 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full"
-                                    style={{
-                                      width: `${card.brightness * 100}%`,
-                                      background: clanColor,
-                                    }}
-                                  />
-                                </div>
-                                <span className="text-[8px] font-sans text-white/30">
-                                  {Math.round(card.brightness * 100)}%
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                {/* Discovered cards list */}
+                <div className="flex flex-col gap-2">
+                  <span className="font-display text-[9px] text-white/35 tracking-widest uppercase">
+                    Sứ giả đã gặp
+                  </span>
 
-                    {/* Undiscovered cards list */}
-                    {region.undiscoveredCards.length > 0 && (
-                      <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
-                        <span className="font-display text-[9px] text-white/20 tracking-widest uppercase">
-                          Sứ giả chưa gặp
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {region.undiscoveredCards.map((card) => (
-                            <span
-                              key={card.cardId}
-                              className="font-sans text-[10px] px-2.5 py-1 rounded-lg border border-dashed border-white/10 text-white/20 bg-white/1"
-                            >
+                  {region.discoveredCards.length === 0 ? (
+                    <p className="font-body text-xs text-white/25 italic">
+                      Chưa gặp Sứ Giả nào của tộc hệ này.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {region.discoveredCards.map((card) => (
+                        <div
+                          key={card.cardId}
+                          className="rounded-xl p-2.5 flex flex-col gap-1 border"
+                          style={{
+                            background: "rgba(255,255,255,0.01)",
+                            borderColor: `${clanColor}20`,
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-display text-xs text-white/80 truncate">
                               {card.cardName}
                             </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Treasure Box */}
-                    <div className="border-t border-white/5 pt-3 mt-1">
-                      {region.isCompleted ? (
-                      <InteractiveRelic clan={region.clan} treasure={region.treasure || ""} />
-                      ) : (
-                        <div className="rounded-xl p-3 flex items-center justify-between border border-dashed border-white/5 bg-white/1 opacity-55">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base text-white/20">🔒</span>
-                            <div className="flex flex-col">
-                              <span className="font-display text-xs text-white/30">
-                                Bảo vật ẩn giấu
-                              </span>
-                              <span className="font-sans text-[10px] text-white/20">
-                                Gặp đủ {region.totalCards} Sứ Giả để mở khoá.
-                              </span>
+                            <span className="text-[10px] font-sans text-white/30">
+                              x{card.encounterCount}
+                            </span>
+                          </div>
+                          {/* Brightness indicator */}
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <div className="h-1.5 flex-1 rounded-full bg-white/5 overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${card.brightness * 100}%`,
+                                  background: clanColor,
+                                }}
+                              />
                             </div>
+                            <span className="text-[8px] font-sans text-white/30">
+                              {Math.round(card.brightness * 100)}%
+                            </span>
                           </div>
                         </div>
-                      )}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Undiscovered cards list */}
+                {region.undiscoveredCards.length > 0 && (
+                  <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
+                    <span className="font-display text-[9px] text-white/20 tracking-widest uppercase">
+                      Sứ giả chưa gặp
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {region.undiscoveredCards.map((card) => (
+                        <span
+                          key={card.cardId}
+                          className="font-sans text-[10px] px-2.5 py-1 rounded-lg border border-dashed border-white/10 text-white/20 bg-white/1"
+                        >
+                          {card.cardName}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}
+
+                {/* Treasure Box */}
+                <div className="border-t border-white/5 pt-3 mt-1">
+                  {region.isCompleted ? (
+                    <InteractiveRelic clan={region.clan} treasure={region.treasure || ""} />
+                  ) : (
+                    <div className="rounded-xl p-3 flex items-center justify-between border border-dashed border-white/5 bg-white/1 opacity-55">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base text-white/20">🔒</span>
+                        <div className="flex flex-col">
+                          <span className="font-display text-xs text-white/30">
+                            Bảo vật ẩn giấu
+                          </span>
+                          <span className="font-sans text-[10px] text-white/20">
+                            Gặp đủ {region.totalCards} Sứ Giả để mở khoá.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {(() => {
+                  const pactClan = activePact ? getCardClan(activePact.cardId) : null;
+                  const hasActivePactHere = pactClan === region.clan;
+                  if (!hasActivePactHere) return null;
+                  return (
+                    <div className="mt-1 p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl flex flex-col gap-2">
+                      <span className="font-display text-[9px] text-amber-400 font-bold tracking-widest uppercase">
+                        📜 KHẾ ƯỚC SỨ GIẢ DÀNH CHO BẠN
+                      </span>
+                      <p className="font-body text-[10px] text-amber-100/70 leading-relaxed italic">
+                        {activePact.target === "NO_NEGATIVE_ERC"
+                          ? "Thử thách: Giữ chỉ số Cộng hưởng (ERC) không được giảm xuống dưới 0."
+                          : activePact.target === "REACH_ERC_30"
+                          ? "Thử thách: Đưa chỉ số Cộng hưởng (ERC) vượt mốc 30+."
+                          : "Thử thách: Giải phóng cõi sương cùng Sứ Giả."}
+                      </p>
+                      <button
+                        onClick={handleClaimPact}
+                        disabled={claimingPact}
+                        className="w-full py-2.5 rounded-lg font-display text-[9px] tracking-widest font-bold text-white transition-all text-center flex items-center justify-center bg-gradient-to-r from-amber-500 to-amber-600 border border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.2)] disabled:opacity-50 cursor-pointer"
+                      >
+                        {claimingPact ? "ĐANG THIÊN ĐỊNH..." : "NGHIỆM THU KHẾ ƯỚC"}
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                <button
+                  onClick={() => setActiveRegion(null)}
+                  className="w-full mt-2 py-3 rounded-xl border border-white/10 text-xs font-display tracking-widest text-white/50 hover:text-white transition-all cursor-pointer"
+                >
+                  Đóng thông tin
+                </button>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Floating Messenger Pact Scroll */}

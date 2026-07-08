@@ -75,6 +75,7 @@ export default function NhatKyPage() {
   const [totalCorrect, setTotalCorrect] = useState<number>(0);
   const [accuracyPercent, setAccuracyPercent] = useState<number>(0);
   const [badgeTier, setBadgeTier] = useState<string>("fog");
+  const [unlockedMemories, setUnlockedMemories] = useState<number[]>([]);
   const [vongSpeechText, setVongSpeechText] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const loggedPrompts = useRef<Set<string>>(new Set());
@@ -131,6 +132,7 @@ export default function NhatKyPage() {
           if (typeof data.totalCorrect === "number") setTotalCorrect(data.totalCorrect);
           if (typeof data.accuracyPercent === "number") setAccuracyPercent(data.accuracyPercent);
           if (typeof data.badgeTier === "string") setBadgeTier(data.badgeTier);
+          if (Array.isArray(data.unlockedMemories)) setUnlockedMemories(data.unlockedMemories);
         })
         .catch(console.error);
     }
@@ -345,6 +347,26 @@ export default function NhatKyPage() {
             📖
           </button>
         </header>
+
+        {/* Special Badge "Đôi Bạn Xuyên Sương" for Memory 8 */}
+        {unlockedMemories.includes(8) && (
+          <div className="mx-4 mb-4 p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 to-purple-950/40 border border-indigo-500/30 shadow-inner flex items-center justify-between animate-fade-in">
+            <div className="flex flex-col gap-1 text-left">
+              <span className="font-display text-[9px] tracking-widest text-indigo-400 uppercase font-semibold">Mối duyên định mệnh</span>
+              <h4 className="font-display text-xs text-indigo-300 font-semibold tracking-wide flex items-center gap-1.5">
+                <span>Đôi Bạn Xuyên Sương</span>
+                <span className="text-xs">🔗</span>
+              </h4>
+              <p className="font-sans text-[10px] text-white/50 italic leading-snug">
+                "Hai bước chân cùng nhịp, hai linh hồn cùng dệt nên sợi chỉ vượt qua màn sương mù vĩnh cửu."
+              </p>
+            </div>
+            <div className="flex flex-col items-center justify-center bg-indigo-500/10 rounded-full w-14 h-14 border border-indigo-500/30 flex-shrink-0">
+              <span className="text-xl">🤝</span>
+              <span className="text-[6px] text-indigo-300 font-sans tracking-wide mt-1 uppercase font-semibold">GẮN KẾT</span>
+            </div>
+          </div>
+        )}
 
         {/* Accuracy Badge and Stats Widget */}
         {totalVerified >= 5 && (

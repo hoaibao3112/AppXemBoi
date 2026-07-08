@@ -51,15 +51,35 @@ for (let i = 0; i < iterations; i++) {
   if (retrogradeDraw.isReversed) retrogradeReversalCount++;
 }
 
+const normalCupsFreq = normalCupsCount / iterations;
+const fullMoonCupsFreq = fullMoonCupsCount / iterations;
+const normalAcesFreq = normalAcesCount / iterations;
+const newMoonAcesFreq = newMoonAcesCount / iterations;
+const normalReversalFreq = normalReversalCount / iterations;
+const retrogradeReversalFreq = retrogradeReversalCount / iterations;
+
+const maxTolerance = 0.025; // 2.5% tolerance
+
+function assertRange(name: string, value: number, expected: number) {
+  const diff = Math.abs(value - expected);
+  if (diff > maxTolerance) {
+    console.error(`❌ ASSERTION FAILED: ${name} frequency is ${(value * 100).toFixed(2)}%, expected ~ ${(expected * 100).toFixed(2)}% (diff: ${(diff * 100).toFixed(2)}%, tolerance: ${(maxTolerance * 100).toFixed(2)}%)`);
+    process.exit(1);
+  }
+  console.log(`✅ ASSERTION PASSED: ${name} is ${(value * 100).toFixed(2)}% (expected ~ ${(expected * 100).toFixed(2)}%)`);
+}
+
 console.log(`\n🌙 Astronomical Event: FULL MOON (Tộc Thuỷ Nguyệt +15% Weight)`);
-console.log(`  - Normal draw Cups frequency: ${(normalCupsCount / iterations * 100).toFixed(2)}% (Expected ~17.95%)`);
-console.log(`  - Full Moon Cups draw frequency: ${(fullMoonCupsCount / iterations * 100).toFixed(2)}% (Expected ~20.08%)`);
+assertRange('Normal Cups Draw', normalCupsFreq, 0.1795);
+assertRange('Full Moon Cups Draw', fullMoonCupsFreq, 0.2008);
 
 console.log(`\n🌑 Astronomical Event: NEW MOON (Aces/Khởi Nguyên +15% Weight)`);
-console.log(`  - Normal draw Aces frequency: ${(normalAcesCount / iterations * 100).toFixed(2)}% (Expected ~5.13%)`);
-console.log(`  - New Moon Aces draw frequency: ${(newMoonAcesCount / iterations * 100).toFixed(2)}% (Expected ~5.83%)`);
+assertRange('Normal Aces Draw', normalAcesFreq, 0.0513);
+assertRange('New Moon Aces Draw', newMoonAcesFreq, 0.0583);
 
 console.log(`\n🪐 Astronomical Event: MERCURY RETROGRADE (Reversal rate: 65%)`);
-console.log(`  - Normal draw Reversal frequency: ${(normalReversalCount / iterations * 100).toFixed(2)}% (Expected ~30.00%)`);
-console.log(`  - Mercury Retrograde Reversal frequency: ${(retrogradeReversalCount / iterations * 100).toFixed(2)}% (Expected ~65.00%)`);
-console.log(`\nTest suite validation complete.`);
+assertRange('Normal Reversal', normalReversalFreq, 0.3000);
+assertRange('Mercury Retrograde Reversal', retrogradeReversalFreq, 0.6500);
+
+console.log(`\n🎉 Test suite validation complete. All draw engine simulations passed.`);
+process.exit(0);

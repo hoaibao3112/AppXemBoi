@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        _count: {
-          select: { memories: true },
+        memories: {
+          select: { memoryIndex: true },
         },
       },
     });
@@ -44,8 +44,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // 1. Requirement check: must have all 7 memories unlocked
-    if (user._count.memories < 7) {
+    // 1. Requirement check: must have all 7 core memories unlocked (index 1-7).
+    // Memory 8 (Sợi Chỉ Xuyên Sương) is a bonus memory and does NOT count toward this requirement.
+    const coreMemoryIndexes = [1, 2, 3, 4, 5, 6, 7];
+    const unlockedIndexes = user.memories.map((m) => m.memoryIndex);
+    const hasAllCoreMemories = coreMemoryIndexes.every((idx) => unlockedIndexes.includes(idx));
+
+    if (!hasAllCoreMemories) {
       return NextResponse.json({
         success: false,
         locked: true,

@@ -14,10 +14,10 @@ export const VONG_MEMORIES = [
   {
     index: 2,
     title: 'Người đồng hành đầu tiên',
-    dialogue: 'Thuở ấy, cõi này chưa được gọi là Cõi Vô Thường. Nó chỉ là một thung lũng sương mù vô danh. Ta không đi một mình. Bên cạnh ta từng có một người... một lữ khách dũng cảm hơn ta rất nhiều. Nàng không sợ vực sâu, cũng không sợ sương tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã yêu sự liều lĩnh đó, nhưng cũng chính sự liều lĩnh đó đã rẽ lối hai chúng ta.',
-    dialogueDefault: 'Thuở ấy, cõi này chưa được gọi là Cõi Vô Thường. Nó chỉ là một thung lũng sương mù vô danh. Ta không đi một mình. Bên cạnh ta từng có một người... một lữ khách dũng cảm hơn ta rất nhiều. Nàng không sợ vực sâu, cũng không sợ sương tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã yêu sự liều lĩnh đó, nhưng cũng chính sự liều lĩnh đó đã rẽ lối hai chúng ta.',
-    dialogueWarm: 'Người bạn hiền hoà... Thuở ấy, cõi này chỉ là một thung lũng sương mù vô danh. Ta từng đồng hành với một người con gái dũng cảm, người đã dạy ta thế nào là ánh sáng giữa bóng tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Trái tim ấm áp của nàng luôn sưởi ấm lòng ta, nhưng sự liều lĩnh đó cũng đã rẽ lối hai chúng ta...',
-    dialogueCold: 'Hành giả cô độc... Cõi này thuở ấy chỉ là thung lũng vô danh. Ta từng đi cùng một kẻ liều lĩnh, kẻ tin rằng có thể dùng ý chí để vượt qua số phận. Nàng ngạo nghễ nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã cảnh báo nàng, nhưng sự bướng bỉnh ấy cuối cùng đã rẽ lối hai chúng ta, để lại một kẻ đơn độc đứng đây.'
+    dialogue: 'Thuở ấy, cõi này chưa được gọi là Cõi Vô Thường. Nó chỉ là một thung lũng sương mù vô danh. Ta không đi một mình. Bên cạnh ta từng có một người... một lữ khách dũng cảm hơn ta rất nhiều. Nàng không sợ vực sâu, cũng không sợ sương tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã yêu sự liều lĩnh đó, nhưng cũng chính sự liều lĩnh đó đã rẽ lối hai chúng ta. ...Nàng không phải người duy nhất từng đứng cạnh ta ở cổng này. Có một lữ khách khác, một người bạn, đã tình nguyện ở lại một mùa sương để san sẻ gánh nặng cùng ta. Nhưng đó là một câu chuyện chỉ hiện ra khi có đủ hai người cùng lắng nghe...',
+    dialogueDefault: 'Thuở ấy, cõi này chưa được gọi là Cõi Vô Thường. Nó chỉ là một thung lũng sương mù vô danh. Ta không đi một mình. Bên cạnh ta từng có một người... một lữ khách dũng cảm hơn ta rất nhiều. Nàng không sợ vực sâu, cũng không sợ sương tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã yêu sự liều lĩnh đó, nhưng cũng chính sự liều lĩnh đó đã rẽ lối hai chúng ta. ...Nàng không phải người duy nhất từng đứng cạnh ta ở cổng này. Có một lữ khách khác, một người bạn, đã tình nguyện ở lại một mùa sương để san sẻ gánh nặng cùng ta. Nhưng đó là một câu chuyện chỉ hiện ra khi có đủ hai người cùng lắng nghe...',
+    dialogueWarm: 'Người bạn hiền hoà... Thuở ấy, cõi này chỉ là một thung lũng sương mù vô danh. Ta từng đồng hành với một người con gái dũng cảm, người đã dạy ta thế nào là ánh sáng giữa bóng tối. Nàng nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Trái tim ấm áp của nàng luôn sưởi ấm lòng ta, nhưng sự liều lĩnh đó cũng đã rẽ lối hai chúng ta... Nàng không phải người duy nhất từng đứng cạnh ta ở cổng này. Có một lữ khách khác, một người bạn, đã tình nguyện ở lại một mùa sương để san sẻ gánh nặng cùng ta. Nhưng đó là một câu chuyện chỉ hiện ra khi có đủ hai người cùng lắng nghe...',
+    dialogueCold: 'Hành giả cô độc... Cõi này thuở ấy chỉ là thung lũng vô danh. Ta từng đi cùng một kẻ liều lĩnh, kẻ tin rằng có thể dùng ý chí để vượt qua số phận. Nàng ngạo nghễ nói: "Nếu sương mù che lối, ta sẽ tự biến mình thành ánh sáng." Ta đã cảnh báo nàng, nhưng sự bướng bỉnh ấy cuối cùng đã rẽ lối hai chúng ta, để lại một kẻ đơn độc đứng đây. Nàng không phải người duy nhất từng đứng cạnh ta ở cổng này. Có một lữ khách khác, một người bạn, đã tình nguyện ở lại một mùa sương để san sẻ gánh nặng cùng ta. Nhưng đó là một câu chuyện chỉ hiện ra khi có đủ hai người cùng lắng nghe...'
   },
   {
     index: 3,
@@ -58,6 +58,14 @@ export const VONG_MEMORIES = [
     dialogueDefault: 'Giờ thì ngươi đã biết câu chuyện của ta rồi, lữ khách. Ta là Vọng, kẻ trông ngóng một người đã hoá thân vào vạn vật. Ta không thể bước vào trong cõi để tìm nàng, cũng không thể trở lại nhân gian vì đã đánh mất trái tim trần thế. Ta đứng đây, giúp những lữ khách như ngươi tìm ra câu trả lời cho tình cảm của mình, với hy vọng một ngày nào đó, có một lữ khách sương mù mang theo thông điệp của nàng từ sâu trong cõi sương mù trở ra trao lại cho ta.',
     dialogueWarm: 'Người bạn hiền hoà của ta... Giờ thì ngươi đã thấu hiểu nỗi lòng ta. Ta đứng nơi ngưỡng cổng lạnh lẽo này để giúp ngươi hàn gắn những vết thương tình cảm. Ta mong một ngày nào đó, sự thấu cảm của một lữ khách như ngươi sẽ mang theo tiếng cười ấm áp của nàng quay trở về bên ta.',
     dialogueCold: 'Hành giả cô độc... Câu chuyện của ta là minh chứng cho sự bám chấp ngu muội. Ta mắc kẹt tại ngưỡng cổng này, không thể đi tiếp, cũng không thể quay lại. Ta đứng đây chứng kiến các ngươi vật lộn với số phận, chỉ mong một ngày có kẻ đủ mạnh mẽ mang sự thật tàn nhẫn từ đáy cõi sương ra kết thúc chu kỳ này.'
+  },
+  {
+    index: 8,
+    title: 'Người gác cổng tạm thời',
+    dialogue: 'Mảnh hồi ức thứ 8 của Vọng đang chờ được lắng nghe.',
+    dialogueDefault: 'Mảnh hồi ức thứ 8 của Vọng đang chờ được lắng nghe.',
+    dialogueWarm: 'Mảnh hồi ức thứ 8 của Vọng đang chờ được lắng nghe.',
+    dialogueCold: 'Mảnh hồi ức thứ 8 của Vọng đang chờ được lắng nghe.'
   }
 ];
 
@@ -319,11 +327,28 @@ export async function getNarrativeGreeting(
     const memory = VONG_MEMORIES.find(m => m.index === newlyUnlockedMemory);
     if (memory) {
       const bridge = getDynamicOutroBridge(user.clan, user.erc);
-      const dialogue = user.erc >= 30
-        ? memory.dialogueWarm
-        : user.erc <= -30
-        ? memory.dialogueCold
-        : memory.dialogueDefault;
+      let dialogue = '';
+      if (memory.index === 8 && (user as any).id) {
+        const link = await prisma.threadLink.findFirst({
+          where: {
+            OR: [
+              { userAId: (user as any).id, status: 'completed' },
+              { userBId: (user as any).id, status: 'completed' }
+            ]
+          }
+        });
+        if (link && link.userBId === (user as any).id) {
+          dialogue = `Ai đó đã nghĩ đến ngươi khi bước qua cổng sương này, lữ khách. Họ đã dệt một sợi chỉ và trao nó vào tay ngươi trước cả khi ngươi kịp hỏi vì sao. Đó là điều Khanh từng làm cho ta — chọn ở lại vì một người, không cần lý do to tát. Ngươi không cần phải đáp lại bằng điều gì lớn lao, lữ khách ạ. Chỉ cần nhớ rằng, hôm nay, có một người đã nghĩ đến ngươi trước.`;
+        } else {
+          dialogue = `Lữ khách, ngươi vừa làm được điều mà rất ít ai chịu làm — ngươi đã chìa tay ra và kéo một người khác bước qua cổng sương cùng mình. Đó chính xác là những gì Khanh đã từng làm cho ta. Khanh không phải người ta yêu, mà là người bạn đã chọn ở lại một mùa sương dài, chỉ để ta không phải một mình đếm bước chân qua cổng. Rồi một ngày, Khanh cũng rời đi, nhẹ nhàng như đến. Trước khi đi, Khanh nói: 'Tình bạn xuyên sương không cần níu giữ, nó chỉ cần được nhớ đến đúng lúc.' Ta nhớ đến Khanh mỗi khi thấy hai lữ khách cùng bước qua cổng này như hai người vừa làm. Cảm ơn ngươi đã cho ta nhớ lại điều đó.`;
+        }
+      } else {
+        dialogue = user.erc >= 30
+          ? memory.dialogueWarm
+          : user.erc <= -30
+          ? memory.dialogueCold
+          : memory.dialogueDefault;
+      }
       return {
         greeting: `[Ký ức của Vọng - Mảnh ${memory.index}: ${memory.title}]\n"${dialogue}"\n\n${bridge}`,
         isMemory: true,

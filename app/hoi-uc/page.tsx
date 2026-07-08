@@ -11,6 +11,16 @@ interface UnlockedMemory {
   unlockedAt: string;
 }
 
+interface ThreadStatus {
+  isLinked: boolean;
+  isCompleted: boolean;
+  progress: string;
+  partnerName?: string;
+  role?: string;
+  referralCode?: string;
+  deepLink?: string;
+}
+
 const unlockHints: Record<number, string> = {
   1: "Mở khoá tự động sau lượt bói thứ 3.",
   2: "Mở khoá tự động sau lượt bói thứ 7.",
@@ -20,6 +30,8 @@ const unlockHints: Record<number, string> = {
   6: "Mở khoá sau khi gặp đủ 4 Tộc Người trong cõi sương mù.",
   7: "Mở khoá sau khi lữ khách đã hoàn thành 15 lượt bói.",
 };
+
+const THREAD_LINK_ENABLED = process.env.NEXT_PUBLIC_ENABLE_THREAD_LINK === "true";
 
 export default function HoiUcPage() {
   const router = useRouter();
@@ -32,6 +44,11 @@ export default function HoiUcPage() {
   // Mirror shards states
   const [shards, setShards] = useState<number[]>([]);
   const [placedShards, setPlacedShards] = useState<number[]>([]);
+
+  // Thread link (Sợi Chỉ Xuyên Sương) states
+  const [threadStatus, setThreadStatus] = useState<ThreadStatus | null>(null);
+  const [weavingThread, setWeavingThread] = useState(false);
+  const [threadStatusLoading, setThreadStatusLoading] = useState(false);
 
   // Sealed Letter states
   const [openingLetter, setOpeningLetter] = useState(false);
@@ -63,9 +80,7 @@ export default function HoiUcPage() {
       }
 
       const res = await fetch("/api/user/memories", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await res.json();
@@ -75,18 +90,62 @@ export default function HoiUcPage() {
       setLocked(data.locked);
 
       const profileRes = await fetch("/api/user/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const profileData = await profileRes.json();
       if (profileRes.ok && profileData.unlockedShards) {
         setShards(profileData.unlockedShards);
       }
+
+      // Fetch thread status if feature enabled
+      if (THREAD_LINK_ENABLED) {
+        setThreadStatusLoading(true);
+        const threadRes = await fetch("/api/user/thread/status", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (threadRes.ok) {
+          const threadData = await threadRes.json();
+          setThreadStatus(threadData);
+        }
+        setThreadStatusLoading(false);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const weaveThread = async () => {
+    setWeavingThread(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("/api/user/thread/generate", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (res.ok && data.deepLink) {
+        if (navigator.share) {
+          await navigator.share({
+            title: "Cõi Vô Thường — Sợi Chỉ Xuyên Sương",
+            text: "Vọng đang chờ ngươi. Hãy cùng ta bước qua cổng sương mù...",
+            url: data.deepLink,
+          });
+        } else {
+          await navigator.clipboard.writeText(data.deepLink);
+          alert(`Đã sao chép liên kết: ${data.deepLink}`);
+        }
+        // Refresh status
+        setThreadStatus((prev) => ({ ...(prev || { isLinked: false, isCompleted: false, progress: "0/2" }), referralCode: data.referralCode }));
+      }
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setWeavingThread(false);
     }
   };
 
@@ -279,8 +338,8 @@ export default function HoiUcPage() {
               className="rounded-2xl p-5 border flex flex-col gap-3 relative overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               style={{
                 background: "radial-gradient(circle at 10% 20%, rgba(212,168,67,0.12) 0%, rgba(139,92,246,0.06) 100%)",
-                borderColor: unlocked.length >= 7 ? "rgba(212,168,67,0.4)" : "rgba(139,92,246,0.15)",
-                boxShadow: unlocked.length >= 7 ? "0 0 25px rgba(212,168,67,0.18)" : "none",
+                borderColor: unlocked.filter(m => m.index <= 7).length >= 7 ? "rgba(212,168,67,0.4)" : "rgba(139,92,246,0.15)",
+                boxShadow: unlocked.filter(m => m.index <= 7).length >= 7 ? "0 0 25px rgba(212,168,67,0.18)" : "none",
               }}
             >
               {openingLetter && (
@@ -290,7 +349,7 @@ export default function HoiUcPage() {
               )}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-xl">{unlocked.length >= 7 ? "✉️" : "🔒"}</span>
+                  <span className="text-xl">{unlocked.filter(m => m.index <= 7).length >= 7 ? "✉️" : "🔒"}</span>
                   <div className="flex flex-col text-left">
                     <span className="font-display text-xs text-amber-300 font-semibold tracking-wider uppercase">
                       LÁ THƯ NIÊM PHONG
@@ -301,10 +360,125 @@ export default function HoiUcPage() {
                   </div>
                 </div>
                 <span className="text-[9px] font-sans text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded bg-amber-400/5">
-                  {unlocked.length >= 7 ? "✦ Có Thể Mở" : `${unlocked.length}/7 Ký Ức`}
+                  {unlocked.filter(m => m.index <= 7).length >= 7 ? "✦ Có Thể Mở" : `${unlocked.filter(m => m.index <= 7).length}/7 Ký Ức`}
                 </span>
               </div>
             </div>
+
+            {/* ── Sợi Chỉ Xuyên Sương ─────────────────── */}
+            {THREAD_LINK_ENABLED && (
+              <div
+                className="rounded-2xl p-5 border flex flex-col gap-4 relative overflow-hidden"
+                style={{
+                  background: threadStatus?.isCompleted
+                    ? "radial-gradient(circle at 10% 20%, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.08) 100%)"
+                    : "rgba(255,255,255,0.01)",
+                  borderColor: threadStatus?.isCompleted
+                    ? "rgba(99,102,241,0.4)"
+                    : threadStatus?.isLinked
+                    ? "rgba(139,92,246,0.3)"
+                    : "rgba(255,255,255,0.06)",
+                  boxShadow: threadStatus?.isCompleted ? "0 0 25px rgba(99,102,241,0.2)" : "none",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">{threadStatus?.isCompleted ? "🔗" : "🌫"}</span>
+                    <div className="flex flex-col text-left">
+                      <span className="font-display text-xs text-indigo-300 font-semibold tracking-wider uppercase">
+                        SỢI CHỈ XUYÊN SƯƠNG
+                      </span>
+                      <span className="font-sans text-[8px] text-white/35 mt-0.5">
+                        Mảnh hồi ức chỉ mở được cùng nhau
+                      </span>
+                    </div>
+                  </div>
+                  {threadStatus?.isCompleted ? (
+                    <span className="text-[9px] font-sans text-indigo-300 border border-indigo-400/30 px-2 py-0.5 rounded bg-indigo-400/10">
+                      ✦ Đôi Bạn Xuyên Sương
+                    </span>
+                  ) : threadStatus?.isLinked ? (
+                    <span className="text-[9px] font-sans text-purple-300 border border-purple-400/20 px-2 py-0.5 rounded bg-purple-400/5">
+                      {threadStatus.progress} Đã bói
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-sans text-white/30 border border-white/5 px-2 py-0.5 rounded">
+                      Chưa dệt
+                    </span>
+                  )}
+                </div>
+
+                {/* Narrative status text */}
+                {threadStatusLoading ? (
+                  <p className="font-body text-xs text-white/40 italic">Đang tìm sợi chỉ trong sương...</p>
+                ) : threadStatus?.isCompleted ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="font-body text-xs text-indigo-200/70 italic leading-relaxed">
+                      "Sợi chỉ đã sáng lên, nối liền hai bước chân qua cổng sương cùng nhau. Mảnh hồi ức thứ 8 của Vọng đã hiện ra."
+                    </p>
+                    {(() => {
+                      const mem8 = unlocked.find((m) => m.index === 8);
+                      return mem8 ? (
+                        <div
+                          onClick={() => setActiveMemory(activeMemory === 8 ? null : 8)}
+                          className="rounded-xl p-3 border border-indigo-500/20 bg-indigo-900/10 cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-[10px] font-display text-indigo-300">8</div>
+                              <span className="font-display text-xs text-indigo-300 font-semibold">{mem8.title}</span>
+                            </div>
+                            <span className="text-indigo-400 text-xs">{activeMemory === 8 ? "∧" : "∨"}</span>
+                          </div>
+                          {activeMemory === 8 && (
+                            <p className="mt-3 font-body text-xs text-white/65 italic leading-relaxed whitespace-pre-line bg-black/20 rounded-lg p-3 border border-white/5">
+                              "{mem8.dialogue}"
+                            </p>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                ) : threadStatus?.isLinked ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="font-body text-xs text-white/55 italic leading-relaxed">
+                      Sợi chỉ đã nối ngươi với <strong className="text-white/80">{threadStatus.partnerName}</strong>.
+                      {threadStatus.progress === "1/2"
+                        ? " Còn chờ một trong hai người bước qua cổng lần nữa..."
+                        : " Cùng nhau bói một lần nữa để mở sợi chỉ này."}
+                    </p>
+                    <div className="flex items-center gap-3 bg-white/3 rounded-xl p-3 border border-white/5">
+                      <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700"
+                          style={{ width: threadStatus.progress === "1/2" ? "50%" : "0%" }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-sans text-white/40">{threadStatus.progress}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <p className="font-body text-xs text-white/40 italic leading-relaxed">
+                      "Chỉ khi nào có hai lữ khách cùng bước qua cổng này với nhau, mảnh hồi ức cuối cùng về Khanh mới hiện ra..."
+                    </p>
+                    <button
+                      id="btn-weave-thread"
+                      onClick={weaveThread}
+                      disabled={weavingThread}
+                      className="w-full py-2.5 rounded-xl font-display text-[10px] tracking-[0.2em] uppercase transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.3))",
+                        border: "1px solid rgba(99,102,241,0.35)",
+                        color: "#a5b4fc",
+                      }}
+                    >
+                      {weavingThread ? "Đang dệt..." : "✦ Dệt Sợi Chỉ"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* List of Memories */}
             {[1, 2, 3, 4, 5, 6, 7].map((index) => {

@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateAmbientVolume, updateFireVolume } from "@/lib/audio";
 
+const THREAD_LINK_ENABLED = process.env.NEXT_PUBLIC_ENABLE_THREAD_LINK === "true";
+
 // ─── Slider Component ─────────────────────────────────────────────────────────
 interface MysticSliderProps {
   label: string;
@@ -362,6 +364,40 @@ export default function CaiDatPage() {
   const [loading, setLoading] = useState(true);
   const [vongVoice, setVongVoice] = useState("male");
 
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemLoading, setRedeemLoading] = useState(false);
+  const [redeemError, setRedeemError] = useState("");
+  const [redeemSuccess, setRedeemSuccess] = useState("");
+
+  const handleRedeem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!redeemCode.trim()) return;
+    setRedeemLoading(true);
+    setRedeemError("");
+    setRedeemSuccess("");
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/user/thread/redeem", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: redeemCode.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gặp lỗi khi liên kết sợi chỉ.");
+      }
+      setRedeemSuccess(data.message || "Đã nối kết sợi chỉ thành công!");
+      setRedeemCode("");
+    } catch (err: any) {
+      setRedeemError(err.message);
+    } finally {
+      setRedeemLoading(false);
+    }
+  };
+
   const loadProfile = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -514,6 +550,50 @@ export default function CaiDatPage() {
               />
             </SettingsBlock>
           </div>
+
+          {/* ── Sợi Chỉ Xuyên Sương ─────────────────────── */}
+          {THREAD_LINK_ENABLED && (
+            <div className="flex flex-col gap-3">
+              <SectionHeader label="Sợi Chỉ Xuyên Sương" />
+              <SettingsBlock>
+                <form onSubmit={handleRedeem} className="flex flex-col gap-3">
+                  <p className="font-body text-xs text-white/40 italic leading-relaxed">
+                    Nhập mã định mệnh (Referral Code) của người đồng hành để dệt nên sợi chỉ liên kết hai người.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      id="input-referral-code"
+                      type="text"
+                      placeholder="Nhập mã lữ khách..."
+                      value={redeemCode}
+                      onChange={(e) => setRedeemCode(e.target.value)}
+                      disabled={redeemLoading}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-purple-500 transition-all"
+                    />
+                    <button
+                      id="btn-redeem-code"
+                      type="submit"
+                      disabled={redeemLoading || !redeemCode.trim()}
+                      className="px-4 py-2.5 rounded-xl font-display text-[10px] tracking-wider uppercase transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.3))",
+                        border: "1px solid rgba(99,102,241,0.35)",
+                        color: "#a5b4fc",
+                      }}
+                    >
+                      {redeemLoading ? "..." : "Liên kết"}
+                    </button>
+                  </div>
+                  {redeemError && (
+                    <p className="font-sans text-[10px] text-red-400 mt-1">{redeemError}</p>
+                  )}
+                  {redeemSuccess && (
+                    <p className="font-sans text-[10px] text-green-400 mt-1">{redeemSuccess}</p>
+                  )}
+                </form>
+              </SettingsBlock>
+            </div>
+          )}
 
           {/* ── Hành Trình Cá Nhân ─────────────────────── */}
           <div className="flex flex-col gap-3">

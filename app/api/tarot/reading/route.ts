@@ -9,6 +9,7 @@ import { checkMemoryUnlocks, calculateClanFromReadings, getNarrativeGreeting, FA
 import { detectCombo } from '@/lib/combos';
 import { getElementalRelation, getOrientationRelation, generateFallbackCommentary } from '@/lib/relations';
 import { isRateLimited } from '@/lib/redis';
+import { threadService } from '@/services/thread.service';
 
 const readingSchema = z.object({
   question: z.string().min(5),
@@ -62,6 +63,10 @@ export async function POST(req: NextRequest) {
     // Check conditions for memory unlocking (using readingsCount + 1 to reflect this new reading)
     const newlyUnlocked = await checkMemoryUnlocks(user.id, cardStrings, readingsCount + 1);
 
+    // Hook thread service to update referral / thread links
+    const newlyUnlockedThreadMemories = await threadService.handleReadingHook(user.id);
+    const combinedNewlyUnlocked = [...newlyUnlocked, ...newlyUnlockedThreadMemories];
+
     // Update user clan if readings count >= 3
     const updatedClan = await calculateClanFromReadings(user.id);
     
@@ -75,7 +80,7 @@ export async function POST(req: NextRequest) {
     const greetingObj = await getNarrativeGreeting(
       updatedUser,
       data.celestialEvents || {},
-      newlyUnlocked.length > 0 ? newlyUnlocked[0] : null,
+      combinedNewlyUnlocked.length > 0 ? combinedNewlyUnlocked[0] : null,
       data.currentHour
     );
     const greeting = greetingObj.greeting;
@@ -289,7 +294,7 @@ export async function POST(req: NextRequest) {
       outro: outroQuestion,
       choices,
       isAiGenerated,
-      newlyUnlockedMemories: newlyUnlocked,
+      newlyUnlockedMemories: combinedNewlyUnlocked,
       fatefulIndex,
       canInitiatePact,
       pactCardId,

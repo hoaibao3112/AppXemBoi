@@ -37,11 +37,16 @@ async function testErcMatrix() {
   let readData = await readRes.json();
   console.log(`Greeting: "${readData.greeting.substring(0, 150)}..."`);
   console.log(`Outro (Expected Neutral): "${readData.outro}"`);
+  
+  if (!readData.readingId) {
+    console.error('❌ FAIL: Reading ID is missing from initial reading');
+    process.exit(1);
+  }
 
   // Let's post Choice B three times to get ERC to +30
   console.log('\n--- 2. Sending Choice B 3 times to get ERC = +30 (Hướng Dương) ---');
+  let currentErc = 0;
   for (let i = 0; i < 3; i++) {
-    // We can reuse readingId from reading 1
     const choiceRes = await fetch(`${baseUrl}/api/tarot/choice`, {
       method: 'POST',
       headers: {
@@ -54,8 +59,15 @@ async function testErcMatrix() {
       })
     });
     const choiceData = await choiceRes.json();
-    console.log(`Choice B sent. User ERC is now: ${choiceData.newErc}`);
+    currentErc = choiceData.newErc;
+    console.log(`Choice B sent. User ERC is now: ${currentErc}`);
   }
+
+  if (currentErc !== 30) {
+    console.error(`❌ FAIL: Expected ERC to be 30, but got ${currentErc}`);
+    process.exit(1);
+  }
+  console.log('✅ PASS: ERC successfully incremented to +30');
 
   // Now, call reading again to see the updated Hướng Dương Outro & Suffix
   console.log('\n--- 3. Calling Reading with ERC = +30 ---');
@@ -68,8 +80,15 @@ async function testErcMatrix() {
     body: JSON.stringify({ question: 'Mối duyên này có bền chặt không?' })
   });
   readData = await readRes.json();
-  console.log(`Greeting (Expected "người bạn hiền hoà"): "${readData.greeting}"`);
+  console.log(`Greeting (Expected "người bạn hiền hoà" / "lữ khách hiền hoà"): "${readData.greeting}"`);
   console.log(`Outro (Expected Hướng Dương): "${readData.outro}"`);
+
+  const hasWarmKeyword = readData.greeting.toLowerCase().includes('hiền') || readData.greeting.toLowerCase().includes('phương xa') || readData.greeting.toLowerCase().includes('bạn');
+  if (!hasWarmKeyword) {
+    console.error(`❌ FAIL: Greeting does not contain warm keywords for ERC = +30`);
+    process.exit(1);
+  }
+  console.log('✅ PASS: Warm profile greeting verified.');
 
   // Let's post Choice A six times to get ERC to -30
   console.log('\n--- 4. Sending Choice A 6 times to get ERC = -30 (Độc Lập) ---');
@@ -86,8 +105,15 @@ async function testErcMatrix() {
       })
     });
     const choiceData = await choiceRes.json();
-    console.log(`Choice A sent. User ERC is now: ${choiceData.newErc}`);
+    currentErc = choiceData.newErc;
+    console.log(`Choice A sent. User ERC is now: ${currentErc}`);
   }
+
+  if (currentErc !== -30) {
+    console.error(`❌ FAIL: Expected ERC to be -30, but got ${currentErc}`);
+    process.exit(1);
+  }
+  console.log('✅ PASS: ERC successfully decremented to -30');
 
   // Call reading again to see the updated Độc Lập Outro & Suffix
   console.log('\n--- 5. Calling Reading with ERC = -30 ---');
@@ -100,12 +126,23 @@ async function testErcMatrix() {
     body: JSON.stringify({ question: 'Ta có nên cắt đứt mối quan hệ này?' })
   });
   readData = await readRes.json();
-  console.log(`Greeting (Expected "hành giả cô độc"): "${readData.greeting}"`);
+  console.log(`Greeting (Expected "hành giả cô độc" / "sắc sảo"): "${readData.greeting}"`);
   console.log(`Outro (Expected Độc Lập): "${readData.outro}"`);
 
+  const hasColdKeyword = readData.greeting.toLowerCase().includes('cô độc') || readData.greeting.toLowerCase().includes('sắc sảo') || readData.greeting.toLowerCase().includes('hành giả');
+  if (!hasColdKeyword) {
+    console.error(`❌ FAIL: Greeting does not contain cold keywords for ERC = -30`);
+    process.exit(1);
+  }
+  console.log('✅ PASS: Cold profile greeting verified.');
+
   console.log(`\n===================================================`);
-  console.log(`🎉 ERC matrix testing complete.`);
+  console.log(`🎉 ERC matrix testing complete. All assertions passed.`);
   console.log(`===================================================`);
+  process.exit(0);
 }
 
-testErcMatrix();
+testErcMatrix().catch(err => {
+  console.error('❌ FAIL: Unexpected error during ERC matrix test:', err);
+  process.exit(1);
+});

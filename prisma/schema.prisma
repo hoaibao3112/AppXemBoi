@@ -24,6 +24,10 @@ model User {
   totalCorrect        Int               @default(0)
   accuracyPercent     Float             @default(0)
   badgeTier           String            @default("fog")
+  referralCode        String?           @unique
+  referredByCode      String?
+  threadLinksAsA      ThreadLink[]      @relation("ThreadLinkA")
+  threadLinksAsB      ThreadLink[]      @relation("ThreadLinkB")
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   readings            Reading[]
@@ -35,6 +39,28 @@ model User {
   events              AppEvent[]
   compatibilityChecks CompatibilityCheck[]
 }
+
+enum ThreadLinkStatus {
+  pending_b_reading
+  pending_a_reading
+  completed
+}
+
+model ThreadLink {
+  id            String           @id @default(uuid())
+  userAId       String
+  userA         User             @relation("ThreadLinkA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId       String           @unique
+  userB         User             @relation("ThreadLinkB", fields: [userBId], references: [id], onDelete: Cascade)
+  linkedAt      DateTime         @default(now())
+  aReadingDone  Boolean          @default(false)
+  bReadingDone  Boolean          @default(false)
+  status        ThreadLinkStatus @default(pending_b_reading)
+  completedAt   DateTime?
+
+  @@unique([userAId, userBId])
+}
+
 
 model Reading {
   id         String   @id @default(uuid())
